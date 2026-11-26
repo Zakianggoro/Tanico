@@ -6,11 +6,15 @@ import com.example.tanico.data.repository.SupabaseBuyerAddressRepository
 import com.example.tanico.data.repository.SupabaseMarketplaceRepository
 import com.example.tanico.data.repository.SupabaseSellerAnalyticsRepository
 import com.example.tanico.data.repository.SupabaseSellerStoreRepository
+import com.example.tanico.data.repository.SupabaseSellerOrderRepository
+import com.example.tanico.data.repository.SupabaseSellerProductRepository
 
 object AppContainer {
     val authRepository by lazy { SupabaseAuthRepository(SupabaseClientProvider) }
     val marketplaceRepository by lazy { SupabaseMarketplaceRepository(SupabaseClientProvider) }
     val buyerAddressRepository by lazy { SupabaseBuyerAddressRepository(SupabaseClientProvider) }
+    val sellerProductRepository by lazy { SupabaseSellerProductRepository(SupabaseClientProvider) }
+    val sellerOrderRepository by lazy { SupabaseSellerOrderRepository(SupabaseClientProvider) }
     val sellerAnalyticsRepository by lazy {
         SupabaseSellerAnalyticsRepository(SupabaseClientProvider)
     }
