@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.tanico.domain.model.DeviceCoordinates
 import com.example.tanico.domain.model.MarketplaceProduct
 import java.text.NumberFormat
 import java.util.Currency
@@ -34,6 +35,8 @@ fun BuyerHomeScreen(
     fullName: String,
     state: BuyerHomeUiState,
     onRetry: () -> Unit,
+    onCalibrateLocation: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -55,6 +58,86 @@ fun BuyerHomeScreen(
             )
         }
 
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier.size(42.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "⌖",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            "Lokasi perangkat",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            state.coordinates?.let(::formatCoordinates)
+                                ?: if (state.isLocationLoading) "Mengambil lokasi..." else "Belum tersedia",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            when {
+                                state.isLocationLoading -> "Mengambil lokasi satu kali..."
+                                state.locationMessage != null -> state.locationMessage
+                                else -> "Diambil saat aplikasi dibuka atau dikalibrasi, tanpa pelacakan aktif."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (state.locationMessage != null) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    if (state.isLocationPermissionDenied) {
+                        TextButton(
+                            onClick = onOpenLocationSettings,
+                            enabled = !state.isLoading
+                        ) {
+                            Text("Pengaturan")
+                        }
+                    }
+                    if (state.canRetry) {
+                        TextButton(
+                            onClick = onCalibrateLocation,
+                            enabled = !state.isLoading
+                        ) {
+                            Text(if (state.coordinates == null) "Kalibrasi lokasi" else "Kalibrasi ulang")
+                        }
+                    }
+                }
+            }
+        }
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -71,7 +154,7 @@ fun BuyerHomeScreen(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Temukan bahan organik dari penjual TANICO.",
+                    "Temukan produk aktif dari penjual dalam radius 25 km dari lokasi Anda.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -113,14 +196,18 @@ fun BuyerHomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        "Produk belum dapat dimuat",
+                        "Produk terdekat belum dapat dimuat",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.error
                     )
                     Text(state.message, style = MaterialTheme.typography.bodyMedium)
-                    TextButton(onClick = onRetry) { Text("Coba lagi") }
+                    if (state.canRetry) {
+                        TextButton(onClick = onRetry) { Text("Coba lagi") }
+                    }
                 }
             }
+
+            state.coordinates == null && state.locationMessage != null -> Unit
 
             state.products.isEmpty() -> Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -132,9 +219,12 @@ fun BuyerHomeScreen(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("Belum ada produk aktif", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Produk yang telah dipublikasikan penjual akan muncul di sini.",
+                        "Belum ada produk terdekat",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        "Belum ada produk aktif dalam jarak 25 km dari lokasi Anda.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -200,6 +290,13 @@ private fun BuyerProductCard(product: MarketplaceProduct) {
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary
                 )
+                product.distanceKm?.let { distanceKm ->
+                    Text(
+                        "Sekitar ${formatDistance(distanceKm)} dari lokasi Anda",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -213,3 +310,19 @@ private fun formatProductPrice(price: Double): String = NumberFormat
         minimumFractionDigits = 0
     }
     .format(price.roundToLong())
+
+private fun formatCoordinates(coordinates: DeviceCoordinates): String =
+    String.format(
+        Locale.US,
+        "%.5f, %.5f",
+        coordinates.latitude,
+        coordinates.longitude
+    )
+
+private fun formatDistance(distanceKm: Double): String = NumberFormat
+    .getNumberInstance(Locale.forLanguageTag("id-ID"))
+    .apply {
+        maximumFractionDigits = 1
+        minimumFractionDigits = 1
+    }
+    .format(distanceKm) + " km"

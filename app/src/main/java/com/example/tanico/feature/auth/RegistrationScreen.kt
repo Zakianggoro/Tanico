@@ -21,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -38,13 +40,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.tanico.R
 import com.example.tanico.core.ui.TanicoMapPinPicker
 import com.example.tanico.domain.model.UserRole
 
@@ -156,14 +159,14 @@ fun RegistrationScreen(
                     onValueChange = onFullNameChanged,
                     label = "Nama Lengkap *",
                     placeholder = "Contoh: Pak Joko Sutrisno / CV Berkah",
-                    leadingSymbol = "♙"
+                    leadingIconRes = R.drawable.person_24
                 )
                 RegistrationField(
                     value = state.phoneNumber,
                     onValueChange = onPhoneNumberChanged,
                     label = "Nomor Telepon Aktif *",
                     placeholder = "+62 812-3456-7890",
-                    leadingSymbol = "☎",
+                    leadingIconRes = R.drawable.phone_in_talk_24,
                     keyboardType = KeyboardType.Phone,
                     supportingText = "Nomor ini digunakan sebagai informasi kontak akun."
                 )
@@ -172,7 +175,7 @@ fun RegistrationScreen(
                     onValueChange = onEmailChanged,
                     label = "Alamat Email *",
                     placeholder = "nama@email.com",
-                    leadingSymbol = "✉",
+                    leadingIconRes = R.drawable.mail_24,
                     keyboardType = KeyboardType.Email,
                     supportingText = "Email diperlukan untuk masuk ke akun TANICO."
                 )
@@ -240,7 +243,7 @@ fun RegistrationScreen(
                     onValueChange = onPasswordChanged,
                     label = "Kata Sandi Baru *",
                     placeholder = "Minimal 8 karakter",
-                    leadingSymbol = "▣",
+                    leadingIconRes = R.drawable.password_24,
                     keyboardType = KeyboardType.Password,
                     visualTransformation = if (passwordVisible) {
                         VisualTransformation.None
@@ -248,10 +251,21 @@ fun RegistrationScreen(
                         PasswordVisualTransformation()
                     },
                     trailingAction = {
-                        TextButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Text(
-                                if (passwordVisible) "Sembunyikan" else "Lihat",
-                                style = MaterialTheme.typography.labelSmall
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    if (passwordVisible) {
+                                        R.drawable.visibility_off_24
+                                    } else {
+                                        R.drawable.visibility_24
+                                    }
+                                ),
+                                contentDescription = if (passwordVisible) {
+                                    "Sembunyikan kata sandi"
+                                } else {
+                                    "Tampilkan kata sandi"
+                                },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -263,7 +277,7 @@ fun RegistrationScreen(
                     onValueChange = onConfirmPasswordChanged,
                     label = "Konfirmasi Kata Sandi *",
                     placeholder = "Ketik ulang kata sandi Anda",
-                    leadingSymbol = "▣",
+                    leadingIconRes = R.drawable.password_24,
                     keyboardType = KeyboardType.Password,
                     visualTransformation = if (confirmationVisible) {
                         VisualTransformation.None
@@ -271,10 +285,21 @@ fun RegistrationScreen(
                         PasswordVisualTransformation()
                     },
                     trailingAction = {
-                        TextButton(onClick = { confirmationVisible = !confirmationVisible }) {
-                            Text(
-                                if (confirmationVisible) "Sembunyikan" else "Lihat",
-                                style = MaterialTheme.typography.labelSmall
+                        IconButton(onClick = { confirmationVisible = !confirmationVisible }) {
+                            Icon(
+                                painter = painterResource(
+                                    if (confirmationVisible) {
+                                        R.drawable.visibility_off_24
+                                    } else {
+                                        R.drawable.visibility_24
+                                    }
+                                ),
+                                contentDescription = if (confirmationVisible) {
+                                    "Sembunyikan konfirmasi kata sandi"
+                                } else {
+                                    "Tampilkan konfirmasi kata sandi"
+                                },
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -501,7 +526,8 @@ private fun RegistrationField(
     onValueChange: (String) -> Unit,
     label: String,
     placeholder: String,
-    leadingSymbol: String,
+    leadingSymbol: String? = null,
+    leadingIconRes: Int? = null,
     modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
     supportingText: String? = null,
@@ -523,12 +549,20 @@ private fun RegistrationField(
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant) },
             leadingIcon = {
-                Text(
-                    leadingSymbol,
-                    modifier = Modifier.padding(start = 2.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 19.sp
-                )
+                if (leadingIconRes != null) {
+                    Icon(
+                        painter = painterResource(leadingIconRes),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else if (leadingSymbol != null) {
+                    Text(
+                        leadingSymbol,
+                        modifier = Modifier.padding(start = 2.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             },
             trailingIcon = trailingAction,
             singleLine = true,

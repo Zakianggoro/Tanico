@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.tanico.core.AppContainer
+import com.example.tanico.domain.model.DeviceCoordinates
 import com.example.tanico.domain.model.MarketplaceProduct
 import com.example.tanico.domain.repository.MarketplaceRepository
 import kotlinx.coroutines.launch
@@ -22,8 +23,13 @@ class BuyerHomeViewModelFactory(
 
 data class BuyerHomeUiState(
     val isLoading: Boolean = false,
+    val isLocationLoading: Boolean = false,
     val products: List<MarketplaceProduct> = emptyList(),
-    val message: String? = null
+    val message: String? = null,
+    val coordinates: DeviceCoordinates? = null,
+    val locationMessage: String? = null,
+    val isLocationPermissionDenied: Boolean = false,
+    val canRetry: Boolean = true
 )
 
 class BuyerHomeViewModel(
@@ -31,20 +37,70 @@ class BuyerHomeViewModel(
 ) : ViewModel() {
     private val mutableUiState = mutableStateOf(BuyerHomeUiState())
     val uiState: State<BuyerHomeUiState> = mutableUiState
+    private var cachedCoordinates: DeviceCoordinates? = null
 
-    fun load() {
-        if (mutableUiState.value.isLoading) return
+    fun beginLocationRequest() {
+        mutableUiState.value = mutableUiState.value.copy(
+            isLoading = true,
+            isLocationLoading = true,
+            message = null,
+            locationMessage = null,
+            isLocationPermissionDenied = false
+        )
+    }
+
+    fun locationUnavailable(
+        message: String,
+        permissionDenied: Boolean = false,
+        canRetry: Boolean = true
+    ) {
+        mutableUiState.value = mutableUiState.value.copy(
+            isLoading = false,
+            isLocationLoading = false,
+            locationMessage = message,
+            isLocationPermissionDenied = permissionDenied,
+            canRetry = canRetry
+        )
+    }
+
+    fun loadAtLocation(coordinates: DeviceCoordinates) {
+        cachedCoordinates = coordinates
+        mutableUiState.value = mutableUiState.value.copy(
+            coordinates = coordinates,
+            isLocationLoading = false,
+            locationMessage = null,
+            isLocationPermissionDenied = false
+        )
+        loadNearbyProducts(coordinates, alreadyLoading = true)
+    }
+
+    fun retry(): Boolean {
+        val coordinates = cachedCoordinates ?: return false
+        loadNearbyProducts(coordinates)
+        return true
+    }
+
+    private fun loadNearbyProducts(
+        coordinates: DeviceCoordinates,
+        alreadyLoading: Boolean = false
+    ) {
+        if (mutableUiState.value.isLoading && !alreadyLoading) return
         mutableUiState.value = mutableUiState.value.copy(isLoading = true, message = null)
         viewModelScope.launch {
-            repository.loadActiveProducts()
+            repository.loadNearbyActiveProducts(
+                latitude = coordinates.latitude,
+                longitude = coordinates.longitude,
+                radiusKm = NEARBY_RADIUS_KM
+            )
                 .onSuccess { products ->
-                    mutableUiState.value = BuyerHomeUiState(
+                    mutableUiState.value = mutableUiState.value.copy(
                         isLoading = false,
-                        products = products
+                        products = products,
+                        message = null
                     )
                 }
                 .onFailure { exception ->
-                    mutableUiState.value = BuyerHomeUiState(
+                    mutableUiState.value = mutableUiState.value.copy(
                         isLoading = false,
                         message = exception.message?.takeIf(String::isNotBlank)
                             ?: "Produk belum dapat dimuat. Coba lagi."
@@ -54,6 +110,11 @@ class BuyerHomeViewModel(
     }
 
     fun reset() {
+        cachedCoordinates = null
         mutableUiState.value = BuyerHomeUiState()
+    }
+
+    companion object {
+        const val NEARBY_RADIUS_KM = 25.0
     }
 }

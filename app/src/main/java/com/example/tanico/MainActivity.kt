@@ -1,15 +1,27 @@
 package com.example.tanico
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tanico.data.location.AndroidDeviceLocationProvider
 import com.example.tanico.core.navigation.AppDestination
 import com.example.tanico.core.session.AppSessionState
 import com.example.tanico.core.ui.TanicoLoadingIndicator
@@ -29,6 +41,7 @@ import com.example.tanico.feature.profile.BuyerAddressViewModelFactory
 import com.example.tanico.feature.seller.SellerAnalyticsViewModel
 import com.example.tanico.feature.seller.SellerAnalyticsViewModelFactory
 import com.example.tanico.ui.theme.TanicoTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,6 +86,71 @@ private fun TanicoApp(
     buyerAddressState: com.example.tanico.feature.profile.BuyerAddressUiState,
     buyerAddressViewModel: BuyerAddressViewModel
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val locationProvider = remember(context.applicationContext) {
+        AndroidDeviceLocationProvider(context.applicationContext)
+    }
+    val hasLocationPermission = {
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+    val fetchBuyerLocation = {
+        buyerHomeViewModel.beginLocationRequest()
+        coroutineScope.launch {
+            locationProvider.getCurrentLocation()
+                .onSuccess(buyerHomeViewModel::loadAtLocation)
+                .onFailure { exception ->
+                    buyerHomeViewModel.locationUnavailable(
+                        exception.message ?: "Lokasi belum dapat diperoleh. Coba lagi."
+                    )
+                }
+        }
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.values.any { it } || hasLocationPermission()) {
+            fetchBuyerLocation()
+        } else {
+            buyerHomeViewModel.locationUnavailable(
+                message = "Izinkan akses lokasi untuk menampilkan produk di sekitar Anda.",
+                permissionDenied = true
+            )
+        }
+    }
+    val requestBuyerLocation = {
+        if (hasLocationPermission()) {
+            if (!buyerHomeViewModel.retry()) fetchBuyerLocation()
+        } else {
+            buyerHomeViewModel.beginLocationRequest()
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            )
+        }
+    }
+    val calibrateBuyerLocation: () -> Unit = {
+        if (hasLocationPermission()) {
+            fetchBuyerLocation()
+        } else {
+            buyerHomeViewModel.beginLocationRequest()
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            )
+        }
+    }
     val sellerUserId = (state.sessionState as? AppSessionState.Authenticated)
         ?.profile
         ?.takeIf { it.role == UserRole.Seller && !state.isPreviewMode }
@@ -84,8 +162,17 @@ private fun TanicoApp(
     LaunchedEffect(sellerUserId) {
         sellerUserId?.let(analyticsViewModel::load)
     }
-    LaunchedEffect(isBuyerMain, state.isPreviewMode) {
-        if (isBuyerMain) buyerHomeViewModel.load() else buyerHomeViewModel.reset()
+    LaunchedEffect(buyerProfile?.id, isBuyerMain, state.isPreviewMode) {
+        when {
+            buyerProfile != null && isBuyerMain -> {
+                if (!buyerHomeViewModel.retry()) requestBuyerLocation()
+            }
+            isBuyerMain && state.isPreviewMode -> buyerHomeViewModel.locationUnavailable(
+                message = "Masuk dengan akun pembeli untuk melihat produk terdekat.",
+                canRetry = false
+            )
+            else -> buyerHomeViewModel.reset()
+        }
     }
     LaunchedEffect(buyerProfile?.id, isBuyerMain, state.isPreviewMode) {
         when {
@@ -163,7 +250,18 @@ private fun TanicoApp(
             analyticsState = analyticsState,
             onAnalyticsRetry = { sellerUserId?.let(analyticsViewModel::load) },
             buyerHomeState = buyerHomeState,
-            onBuyerHomeRetry = buyerHomeViewModel::load,
+            onBuyerHomeRetry = {
+                if (!buyerHomeViewModel.retry()) requestBuyerLocation()
+            },
+            onBuyerHomeCalibrateLocation = calibrateBuyerLocation,
+            onBuyerHomeOpenLocationSettings = {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null)
+                    )
+                )
+            },
             buyerAddressState = buyerAddressState,
             onBuyerAddressRetry = {
                 buyerProfile?.let { profile ->
