@@ -1,0 +1,228 @@
+package com.example.tanico.feature.main
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.example.tanico.core.ui.TanicoEmptyState
+import com.example.tanico.domain.model.UserRole
+import com.example.tanico.feature.profile.ProfileScreen
+import com.example.tanico.feature.seller.SellerAnalyticsScreen
+import com.example.tanico.feature.seller.SellerAnalyticsUiState
+
+enum class MainSection(val label: String, val marker: String) {
+    Beranda("Beranda", "⌂"),
+    Analitik("Analitik", "▥"),
+    Notifikasi("Notifikasi", "●"),
+    Pembelajaran("Pembelajaran", "▤"),
+    Profil("Profil", "○")
+}
+
+@Composable
+fun MainAppScreen(
+    role: UserRole,
+    isPreviewMode: Boolean,
+    fullName: String,
+    phoneNumber: String,
+    email: String,
+    location: String,
+    storeName: String,
+    storeAddress: String,
+    editingProfile: Boolean,
+    isLoading: Boolean,
+    message: String?,
+    analyticsState: SellerAnalyticsUiState,
+    onAnalyticsRetry: () -> Unit,
+    onFullNameChanged: (String) -> Unit,
+    onPhoneNumberChanged: (String) -> Unit,
+    onEmailChanged: (String) -> Unit,
+    onLocationChanged: (String) -> Unit,
+    onStoreNameChanged: (String) -> Unit,
+    onStoreAddressChanged: (String) -> Unit,
+    onEditProfile: () -> Unit,
+    onSaveProfile: () -> Unit,
+    onSignOut: () -> Unit,
+    onExitPreview: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val sections = if (role == UserRole.Seller) {
+        listOf(MainSection.Beranda, MainSection.Analitik, MainSection.Notifikasi, MainSection.Profil)
+    } else {
+        listOf(MainSection.Beranda, MainSection.Notifikasi, MainSection.Pembelajaran, MainSection.Profil)
+    }
+    var selectedSection by rememberSaveable(role) {
+        mutableStateOf(MainSection.Beranda.name)
+    }
+    val section = MainSection.valueOf(selectedSection)
+
+    Scaffold(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                sections.forEach { item ->
+                    NavigationBarItem(
+                        selected = section == item,
+                        onClick = { selectedSection = item.name },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        icon = { Text(item.marker) },
+                        label = { Text(item.label) }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        when (section) {
+            MainSection.Profil -> ProfileScreen(
+                role = role,
+                isPreviewMode = isPreviewMode,
+                fullName = fullName,
+                phoneNumber = phoneNumber,
+                email = email,
+                location = location,
+                storeName = storeName,
+                storeAddress = storeAddress,
+                isEditing = editingProfile,
+                isLoading = isLoading,
+                message = message,
+                onFullNameChanged = onFullNameChanged,
+                onPhoneNumberChanged = onPhoneNumberChanged,
+                onEmailChanged = onEmailChanged,
+                onLocationChanged = onLocationChanged,
+                onStoreNameChanged = onStoreNameChanged,
+                onStoreAddressChanged = onStoreAddressChanged,
+                onEdit = onEditProfile,
+                onSave = onSaveProfile,
+                onSignOut = onSignOut,
+                onExitPreview = onExitPreview,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+
+            MainSection.Beranda -> HomeScreen(
+                role = role,
+                fullName = fullName,
+                isPreviewMode = isPreviewMode,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+
+            MainSection.Analitik -> if (role == UserRole.Seller) {
+                SellerAnalyticsScreen(
+                    state = analyticsState,
+                    onRetry = onAnalyticsRetry,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                )
+            } else {
+                TanicoEmptyState(
+                    title = "Analitik penjual",
+                    message = "Ringkasan ini tersedia untuk akun penjual.",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                )
+            }
+
+            MainSection.Notifikasi -> TanicoEmptyState(
+                title = "Belum ada notifikasi",
+                message = "Notifikasi akun akan tampil di sini setelah layanan TANICO terhubung.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+
+            MainSection.Pembelajaran -> TanicoEmptyState(
+                title = "Pembelajaran TANICO",
+                message = "Artikel dan materi edukasi akan tersedia pada tahap pengembangan berikutnya.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeScreen(
+    role: UserRole,
+    fullName: String,
+    isPreviewMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val roleTitle = if (role == UserRole.Buyer) "Pembeli / Bio-Industri" else "Penjual / Petani & Pengepul"
+    Column(
+        modifier = modifier.padding(24.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "TANICO  •  Beranda",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "Halo, ${fullName.ifBlank { roleTitle }}",
+            style = MaterialTheme.typography.headlineMedium
+        )
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = if (isPreviewMode) "Mode pratinjau" else "Akun ${roleTitle}",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Text(
+                    text = if (isPreviewMode) {
+                        "Data dan transaksi belum tersedia. Pratinjau ini tidak membuat akun."
+                    } else if (role == UserRole.Seller) {
+                        "Gunakan tab Analitik untuk melihat omzet dari pesanan yang telah selesai."
+                    } else {
+                        "Akun Anda siap digunakan. Fitur marketplace akan hadir pada tahap berikutnya."
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Text(
+            text = if (isPreviewMode) {
+                "Gunakan tab Profil untuk melihat tampilan profil ${if (role == UserRole.Buyer) "pembeli" else "penjual"}."
+            } else {
+                "Gunakan tab Profil untuk mengelola informasi akun Anda."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
