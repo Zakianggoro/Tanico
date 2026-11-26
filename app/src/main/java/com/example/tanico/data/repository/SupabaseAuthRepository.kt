@@ -51,6 +51,7 @@ class SupabaseAuthRepository(
                         val role = UserRole.entries.firstOrNull {
                             it.storageValue == profile.role
                         } ?: return@map AppSessionState.Unauthorized
+                        val store = if (role == UserRole.Seller) loadStore(user.id) else null
                         AppSessionState.Authenticated(
                             UserProfile(
                                 id = profile.id,
@@ -61,7 +62,9 @@ class SupabaseAuthRepository(
                                 location = user.userMetadata
                                     ?.get("location")
                                     ?.jsonPrimitive
-                                    ?.contentOrNull
+                                    ?.contentOrNull,
+                                storeName = store?.storeName,
+                                storeAddress = store?.address
                             )
                         )
                     }
@@ -91,6 +94,22 @@ class SupabaseAuthRepository(
             put("phone", phone)
             put("location", request.location.trim())
             put("role", request.role.storageValue)
+            if (request.role == UserRole.Seller) {
+                val storeName = request.storeName?.trim()?.takeIf(String::isNotEmpty)
+                    ?: error("Nama toko wajib diisi untuk akun penjual.")
+                val storeAddress = request.storeAddress?.trim()?.takeIf(String::isNotEmpty)
+                    ?: error("Alamat lengkap toko wajib diisi untuk akun penjual.")
+                val latitude = request.storeLatitude
+                    ?.takeIf { it.isFinite() && it in -90.0..90.0 }
+                    ?: error("Latitude toko harus berupa angka antara -90 dan 90.")
+                val longitude = request.storeLongitude
+                    ?.takeIf { it.isFinite() && it in -180.0..180.0 }
+                    ?: error("Longitude toko harus berupa angka antara -180 dan 180.")
+                put("store_name", storeName)
+                put("store_address", storeAddress)
+                put("store_latitude", latitude.toString())
+                put("store_longitude", longitude.toString())
+            }
         }
         val email = request.email.trim()
         require(isValidEmailAddress(email)) { "Masukkan alamat email yang valid." }
@@ -129,6 +148,13 @@ class SupabaseAuthRepository(
         }
         .decodeSingleOrNull<ProfileRow>()
 
+    private suspend fun loadStore(userId: String): StoreRow? = clientProvider.client
+        .from("stores")
+        .select(columns = Columns.list("store_name", "address")) {
+            filter { eq("owner_id", userId) }
+        }
+        .decodeSingleOrNull<StoreRow>()
+
     private suspend fun <T> safely(block: suspend () -> T): Result<T> = try {
         if (!isConfigured) error("Supabase belum dikonfigurasi. Isi URL dan publishable key di local.properties.")
         Result.success(block())
@@ -154,5 +180,11 @@ class SupabaseAuthRepository(
     @Serializable
     private data class ProfileUpdate(
         @SerialName("full_name") val fullName: String
+    )
+
+    @Serializable
+    private data class StoreRow(
+        @SerialName("store_name") val storeName: String,
+        val address: String
     )
 }

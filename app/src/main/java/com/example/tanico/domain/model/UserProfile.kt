@@ -6,7 +6,9 @@ data class UserProfile(
     val email: String?,
     val phone: String?,
     val role: UserRole,
-    val location: String?
+    val location: String?,
+    val storeName: String? = null,
+    val storeAddress: String? = null
 )
 
 data class RegistrationRequest(
@@ -15,7 +17,11 @@ data class RegistrationRequest(
     val email: String,
     val location: String,
     val role: UserRole,
-    val password: String
+    val password: String,
+    val storeName: String? = null,
+    val storeAddress: String? = null,
+    val storeLatitude: Double? = null,
+    val storeLongitude: Double? = null
 )
 
 data class RegistrationOutcome(val verificationRequired: Boolean)
