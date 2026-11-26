@@ -54,6 +54,8 @@ fun MainAppScreen(
     onAnalyticsRetry: () -> Unit,
     buyerHomeState: BuyerHomeUiState,
     onBuyerHomeRetry: () -> Unit,
+    onBuyerHomeCalibrateLocation: () -> Unit,
+    onBuyerHomeOpenLocationSettings: () -> Unit,
     buyerAddressState: BuyerAddressUiState,
     onBuyerAddressRetry: () -> Unit,
     onBuyerAddressEdit: () -> Unit,
@@ -168,6 +170,8 @@ fun MainAppScreen(
                     fullName = fullName,
                     state = buyerHomeState,
                     onRetry = onBuyerHomeRetry,
+                    onCalibrateLocation = onBuyerHomeCalibrateLocation,
+                    onOpenLocationSettings = onBuyerHomeOpenLocationSettings,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)

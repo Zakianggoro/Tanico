@@ -8,5 +8,6 @@ data class MarketplaceProduct(
     val price: Double,
     val stock: Int,
     val unit: String,
-    val weightPerUnitKg: Double
+    val weightPerUnitKg: Double,
+    val distanceKm: Double? = null
 )

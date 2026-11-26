@@ -348,17 +348,24 @@ private fun AuthPasswordField(
             placeholder = { Text("Masukkan kata sandi Anda") },
             leadingIcon = {
                 Icon(
-                    painter = painterResource(R.drawable.lock_24),
+                    painter = painterResource(R.drawable.password_24),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             },
             trailingIcon = {
-                TextButton(onClick = { onVisibilityChanged(!visible) }) {
-                    Text(
-                        if (visible) "Sembunyikan" else "Lihat",
-                        style = MaterialTheme.typography.labelSmall
+                IconButton(onClick = { onVisibilityChanged(!visible) }) {
+                    Icon(
+                        painter = painterResource(
+                            if (visible) R.drawable.visibility_off_24 else R.drawable.visibility_24
+                        ),
+                        contentDescription = if (visible) {
+                            "Sembunyikan kata sandi"
+                        } else {
+                            "Tampilkan kata sandi"
+                        },
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },

@@ -4,35 +4,35 @@ import com.example.tanico.data.remote.SupabaseClientProvider
 import com.example.tanico.domain.model.MarketplaceProduct
 import com.example.tanico.domain.repository.MarketplaceRepository
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class SupabaseMarketplaceRepository(
     private val clientProvider: SupabaseClientProvider
 ) : MarketplaceRepository {
-    override suspend fun loadActiveProducts(): Result<List<MarketplaceProduct>> = try {
+    override suspend fun loadNearbyActiveProducts(
+        latitude: Double,
+        longitude: Double,
+        radiusKm: Double
+    ): Result<List<MarketplaceProduct>> = try {
         check(clientProvider.isConfigured) {
             "Supabase belum dikonfigurasi. Isi URL dan publishable key di local.properties."
         }
         val client = clientProvider.client
-        val products = client.from("products")
-            .select(
-                columns = Columns.list(
-                    "id",
-                    "category_id",
-                    "name",
-                    "description",
-                    "price",
-                    "stock",
-                    "unit",
-                    "weight_per_unit_kg"
-                )
-            ) {
-                filter { eq("status", "active") }
-                limit(20)
+        val products = client.postgrest.rpc(
+            function = "get_nearby_active_products",
+            parameters = buildJsonObject {
+                put("p_latitude", latitude)
+                put("p_longitude", longitude)
+                put("p_radius_km", radiusKm)
             }
+        )
             .decodeList<ProductRow>()
         val categories = client.from("categories")
             .select(columns = Columns.list("id", "name"))
@@ -49,7 +49,8 @@ class SupabaseMarketplaceRepository(
                     price = product.price,
                     stock = product.stock,
                     unit = product.unit,
-                    weightPerUnitKg = product.weightPerUnitKg
+                    weightPerUnitKg = product.weightPerUnitKg,
+                    distanceKm = product.distanceKm
                 )
             }
         )
@@ -68,7 +69,8 @@ class SupabaseMarketplaceRepository(
         val price: Double,
         val stock: Int,
         val unit: String,
-        @SerialName("weight_per_unit_kg") val weightPerUnitKg: Double
+        @SerialName("weight_per_unit_kg") val weightPerUnitKg: Double,
+        @SerialName("distance_km") val distanceKm: Double
     )
 
     @Serializable
