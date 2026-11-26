@@ -71,6 +71,10 @@ class AuthViewModelTest {
         viewModel.updatePhoneNumber("081234567890")
         viewModel.updateEmail("buyer@example.test")
         viewModel.updateLocation("Kota Malang")
+        viewModel.updateStoreName("Toko Tani Berkah")
+        viewModel.updateStoreAddress("Jalan Tani 1, Kota Malang")
+        viewModel.updateStoreLatitude("-7.9666")
+        viewModel.updateStoreLongitude("112.6326")
         viewModel.updatePassword("secret123")
         viewModel.updateConfirmPassword("secret123")
         viewModel.updateTermsAccepted(true)
@@ -80,7 +84,57 @@ class AuthViewModelTest {
         assertTrue(repository.registrationCalled)
         assertEquals(UserRole.Seller, repository.registrationRequest?.role)
         assertEquals("buyer@example.test", repository.registrationRequest?.email)
+        assertEquals("Toko Tani Berkah", repository.registrationRequest?.storeName)
+        assertEquals("Jalan Tani 1, Kota Malang", repository.registrationRequest?.storeAddress)
+        assertEquals(-7.9666, repository.registrationRequest?.storeLatitude!!, 0.000001)
+        assertEquals(112.6326, repository.registrationRequest?.storeLongitude!!, 0.000001)
         assertEquals(AuthPage.EmailVerification, viewModel.uiState.value.authPage)
+    }
+
+    @Test
+    fun sellerRegistrationRejectsCoordinatesOutsideStoreLocationRanges() {
+        val repository = FakeAuthRepository()
+        val viewModel = AuthViewModel(repository)
+        viewModel.selectRole(UserRole.Seller)
+        viewModel.updateFullName("Penjual TANICO")
+        viewModel.updatePhoneNumber("081234567890")
+        viewModel.updateEmail("seller@example.test")
+        viewModel.updateLocation("Kota Malang")
+        viewModel.updateStoreName("Toko Tani Berkah")
+        viewModel.updateStoreAddress("Jalan Tani 1, Kota Malang")
+        viewModel.updateStoreLatitude("91")
+        viewModel.updateStoreLongitude("112.6326")
+        viewModel.updatePassword("secret123")
+        viewModel.updateConfirmPassword("secret123")
+        viewModel.updateTermsAccepted(true)
+
+        viewModel.submitRegistration()
+
+        assertEquals(
+            "Latitude toko harus berupa angka antara -90 dan 90.",
+            viewModel.uiState.value.message
+        )
+        assertFalse(repository.registrationCalled)
+    }
+
+    @Test
+    fun buyerRegistrationDoesNotRequireStoreDetails() {
+        val repository = FakeAuthRepository()
+        val viewModel = AuthViewModel(repository)
+        viewModel.updateFullName("Pembeli TANICO")
+        viewModel.updatePhoneNumber("081234567890")
+        viewModel.updateEmail("buyer@example.test")
+        viewModel.updateLocation("Kota Malang")
+        viewModel.updatePassword("secret123")
+        viewModel.updateConfirmPassword("secret123")
+        viewModel.updateTermsAccepted(true)
+
+        viewModel.submitRegistration()
+
+        assertTrue(repository.registrationCalled)
+        assertEquals(UserRole.Buyer, repository.registrationRequest?.role)
+        assertEquals(null, repository.registrationRequest?.storeName)
+        assertEquals(null, repository.registrationRequest?.storeLatitude)
     }
 
     @Test

@@ -94,7 +94,7 @@ private fun AnalyticsContent(analytics: SellerAnalytics, modifier: Modifier = Mo
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Text("Omzet produk bulanan", style = MaterialTheme.typography.titleLarge)
-                RevenueChart(analytics.monthlyRevenue)
+                SellerRevenueChart(analytics.monthlyRevenue)
             }
         }
         Text(
@@ -130,7 +130,7 @@ private fun MetricCard(label: String, value: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun RevenueChart(months: List<MonthlyRevenue>) {
+internal fun SellerRevenueChart(months: List<MonthlyRevenue>) {
     val maxAmount = months.maxOfOrNull { it.amount }?.coerceAtLeast(1L) ?: 1L
     val monthNames = DateFormatSymbols.getInstance(Locale.forLanguageTag("id-ID")).shortMonths
     Row(
@@ -166,7 +166,7 @@ private fun RevenueChart(months: List<MonthlyRevenue>) {
     }
 }
 
-private fun formatRupiah(amount: Long): String = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+internal fun formatRupiah(amount: Long): String = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
     .apply {
         currency = Currency.getInstance("IDR")
         maximumFractionDigits = 0

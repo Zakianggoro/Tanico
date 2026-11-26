@@ -42,6 +42,8 @@ data class AuthUiState(
     val location: String = "",
     val storeName: String = "",
     val storeAddress: String = "",
+    val storeLatitude: String = "",
+    val storeLongitude: String = "",
     val password: String = "",
     val confirmPassword: String = "",
     val termsAccepted: Boolean = false,
@@ -96,6 +98,8 @@ class AuthViewModel(
     fun updateLocation(value: String) = update { it.copy(location = value, message = null) }
     fun updateStoreName(value: String) = update { it.copy(storeName = value, message = null) }
     fun updateStoreAddress(value: String) = update { it.copy(storeAddress = value, message = null) }
+    fun updateStoreLatitude(value: String) = update { it.copy(storeLatitude = value, message = null) }
+    fun updateStoreLongitude(value: String) = update { it.copy(storeLongitude = value, message = null) }
     fun updatePassword(value: String) = update { it.copy(password = value, message = null) }
     fun updateConfirmPassword(value: String) = update { it.copy(confirmPassword = value, message = null) }
     fun updateTermsAccepted(value: Boolean) = update { it.copy(termsAccepted = value, message = null) }
@@ -128,6 +132,12 @@ class AuthViewModel(
             state.phoneNumber.isBlank() -> "Masukkan nomor telepon aktif."
             !isValidEmailAddress(state.email) -> "Masukkan alamat email yang valid."
             state.location.isBlank() -> "Pilih domisili kabupaten atau kota."
+            state.selectedRole == UserRole.Seller && state.storeName.isBlank() -> "Masukkan nama toko."
+            state.selectedRole == UserRole.Seller && state.storeAddress.isBlank() -> "Masukkan alamat lengkap toko."
+            state.selectedRole == UserRole.Seller && !isCoordinateInRange(state.storeLatitude, -90.0, 90.0) ->
+                "Latitude toko harus berupa angka antara -90 dan 90."
+            state.selectedRole == UserRole.Seller && !isCoordinateInRange(state.storeLongitude, -180.0, 180.0) ->
+                "Longitude toko harus berupa angka antara -180 dan 180."
             state.password.length < 8 -> "Kata sandi harus terdiri dari minimal 8 karakter."
             state.password != state.confirmPassword -> "Konfirmasi kata sandi belum cocok."
             !state.termsAccepted -> "Setujui syarat dan ketentuan untuk melanjutkan."
@@ -144,7 +154,13 @@ class AuthViewModel(
             email = state.email,
             location = state.location,
             role = state.selectedRole,
-            password = state.password
+            password = state.password,
+            storeName = state.storeName.takeIf { state.selectedRole == UserRole.Seller },
+            storeAddress = state.storeAddress.takeIf { state.selectedRole == UserRole.Seller },
+            storeLatitude = state.storeLatitude.toDoubleOrNull()
+                .takeIf { state.selectedRole == UserRole.Seller },
+            storeLongitude = state.storeLongitude.toDoubleOrNull()
+                .takeIf { state.selectedRole == UserRole.Seller }
         )
         launchRequest {
             repository.signUp(request)
@@ -248,6 +264,8 @@ class AuthViewModel(
                             location = "",
                             storeName = "",
                             storeAddress = "",
+                            storeLatitude = "",
+                            storeLongitude = "",
                             password = "",
                             confirmPassword = "",
                             editingProfile = false,
@@ -273,6 +291,8 @@ class AuthViewModel(
                     location = "",
                     storeName = "",
                     storeAddress = "",
+                    storeLatitude = "",
+                    storeLongitude = "",
                     isPreviewMode = false
                 )
                 is AppSessionState.Authenticated -> current.copy(
@@ -282,6 +302,8 @@ class AuthViewModel(
                     phoneNumber = sessionState.profile.phone.orEmpty(),
                     email = sessionState.profile.email.orEmpty(),
                     location = sessionState.profile.location.orEmpty(),
+                    storeName = sessionState.profile.storeName.orEmpty(),
+                    storeAddress = sessionState.profile.storeAddress.orEmpty(),
                     isPreviewMode = false,
                     message = null
                 )
@@ -331,6 +353,9 @@ class AuthViewModel(
             messageIsError = true
         )
     }
+
+    private fun isCoordinateInRange(value: String, minimum: Double, maximum: Double): Boolean =
+        value.trim().toDoubleOrNull()?.let { it.isFinite() && it in minimum..maximum } == true
 
     private inline fun update(transform: (AuthUiState) -> AuthUiState) {
         mutableUiState.value = transform(mutableUiState.value)

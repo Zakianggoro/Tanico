@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.tanico.core.ui.TanicoMapPinPicker
 import com.example.tanico.domain.model.UserRole
 
 @Composable
@@ -35,6 +36,10 @@ fun RegistrationScreen(
     onPhoneNumberChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
     onLocationChanged: (String) -> Unit,
+    onStoreNameChanged: (String) -> Unit,
+    onStoreAddressChanged: (String) -> Unit,
+    onStoreLatitudeChanged: (String) -> Unit,
+    onStoreLongitudeChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onConfirmPasswordChanged: (String) -> Unit,
     onTermsAcceptedChanged: (Boolean) -> Unit,
@@ -107,6 +112,34 @@ fun RegistrationScreen(
                         label = "Domisili Kabupaten / Kota *",
                         placeholder = "Contoh: Kabupaten Malang"
                     )
+                    if (state.selectedRole == UserRole.Seller) {
+                        Text(
+                            "Informasi Toko",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        AuthField(
+                            value = state.storeName,
+                            onValueChange = onStoreNameChanged,
+                            label = "Nama Toko *",
+                            placeholder = "Contoh: Toko Tani Berkah"
+                        )
+                        AuthField(
+                            value = state.storeAddress,
+                            onValueChange = onStoreAddressChanged,
+                            label = "Alamat Lengkap Toko *",
+                            placeholder = "Jalan, desa/kelurahan, kecamatan, kota"
+                        )
+                        TanicoMapPinPicker(
+                            latitude = state.storeLatitude,
+                            longitude = state.storeLongitude,
+                            onLocationSelected = { latitude, longitude ->
+                                onStoreLatitudeChanged(latitude)
+                                onStoreLongitudeChanged(longitude)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     OutlinedTextField(
                         value = state.password,
                         onValueChange = onPasswordChanged,

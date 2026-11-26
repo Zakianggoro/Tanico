@@ -86,6 +86,10 @@ private fun TanicoApp(
                 onPhoneNumberChanged = viewModel::updatePhoneNumber,
                 onEmailChanged = viewModel::updateEmail,
                 onLocationChanged = viewModel::updateLocation,
+                onStoreNameChanged = viewModel::updateStoreName,
+                onStoreAddressChanged = viewModel::updateStoreAddress,
+                onStoreLatitudeChanged = viewModel::updateStoreLatitude,
+                onStoreLongitudeChanged = viewModel::updateStoreLongitude,
                 onPasswordChanged = viewModel::updatePassword,
                 onConfirmPasswordChanged = viewModel::updateConfirmPassword,
                 onTermsAcceptedChanged = viewModel::updateTermsAccepted,
@@ -110,6 +114,8 @@ private fun TanicoApp(
             location = state.location,
             storeName = state.storeName,
             storeAddress = state.storeAddress,
+            storeLatitude = state.storeLatitude,
+            storeLongitude = state.storeLongitude,
             editingProfile = state.editingProfile,
             isLoading = state.isLoading,
             message = state.message,
@@ -121,6 +127,19 @@ private fun TanicoApp(
             onLocationChanged = viewModel::updateLocation,
             onStoreNameChanged = viewModel::updateStoreName,
             onStoreAddressChanged = viewModel::updateStoreAddress,
+            onStoreLatitudeChanged = viewModel::updateStoreLatitude,
+            onStoreLongitudeChanged = viewModel::updateStoreLongitude,
+            onCreateStore = { name, address, latitude, longitude ->
+                sellerUserId?.let { id ->
+                    analyticsViewModel.createStore(
+                        ownerId = id,
+                        storeName = name,
+                        address = address,
+                        latitudeText = latitude,
+                        longitudeText = longitude
+                    )
+                }
+            },
             onEditProfile = viewModel::startEditingProfile,
             onSaveProfile = viewModel::saveProfile,
             onSignOut = viewModel::signOut,
