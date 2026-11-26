@@ -5,6 +5,7 @@ import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 
+
 object SupabaseClientProvider {
     val isConfigured: Boolean
         get() = BuildConfig.SUPABASE_URL.isNotBlank() &&
