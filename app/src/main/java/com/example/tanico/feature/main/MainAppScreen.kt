@@ -1,5 +1,6 @@
 package com.example.tanico.feature.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.tanico.core.ui.TanicoEmptyState
 import com.example.tanico.domain.model.UserRole
+import com.example.tanico.feature.marketplace.BuyerHomeScreen
+import com.example.tanico.feature.marketplace.BuyerHomeUiState
+import com.example.tanico.feature.marketplace.BuyerStoreDirectoryScreen
+import com.example.tanico.feature.marketplace.BuyerStorefrontScreen
+import com.example.tanico.feature.profile.BuyerAddressUiState
 import com.example.tanico.feature.profile.ProfileScreen
 import com.example.tanico.feature.seller.SellerAnalyticsUiState
 
@@ -30,6 +36,12 @@ enum class MainSection(val label: String, val marker: String) {
     Notifikasi("Notifikasi", "●"),
     Pembelajaran("Pembelajaran", "▤"),
     Profil("Profil", "○")
+}
+
+private enum class BuyerStorePage {
+    Home,
+    Directory,
+    Storefront
 }
 
 @Composable
@@ -73,8 +85,22 @@ fun MainAppScreen(
     var selectedSection by rememberSaveable(role) {
         mutableStateOf(MainSection.Beranda.name)
     }
+    var buyerStorePage by rememberSaveable(role) {
+        mutableStateOf(BuyerStorePage.Home)
+    }
     val section = MainSection.values().firstOrNull { it.name == selectedSection }
         ?: MainSection.Beranda
+    BackHandler(
+        enabled = role == UserRole.Buyer &&
+            section == MainSection.Beranda &&
+            buyerStorePage != BuyerStorePage.Home
+    ) {
+        buyerStorePage = when (buyerStorePage) {
+            BuyerStorePage.Storefront -> BuyerStorePage.Directory
+            BuyerStorePage.Directory -> BuyerStorePage.Home
+            BuyerStorePage.Home -> BuyerStorePage.Home
+        }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -84,7 +110,10 @@ fun MainAppScreen(
                 sections.forEach { item ->
                     NavigationBarItem(
                         selected = section == item,
-                        onClick = { selectedSection = item.name },
+                        onClick = {
+                            selectedSection = item.name
+                            buyerStorePage = BuyerStorePage.Home
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -134,6 +163,45 @@ fun MainAppScreen(
                     .padding(innerPadding)
             )
 
+            MainSection.Beranda -> if (role == UserRole.Buyer) {
+                when (buyerStorePage) {
+                    BuyerStorePage.Home -> BuyerHomeScreen(
+                        fullName = fullName,
+                        state = buyerHomeState,
+                        onRetry = onBuyerHomeRetry,
+                        onBrowseStores = { buyerStorePage = BuyerStorePage.Directory },
+                        onCalibrateLocation = onBuyerHomeCalibrateLocation,
+                        onOpenLocationSettings = onBuyerHomeOpenLocationSettings,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+
+                    BuyerStorePage.Directory -> BuyerStoreDirectoryScreen(
+                        onBack = { buyerStorePage = BuyerStorePage.Home },
+                        onOpenPreviewStore = { buyerStorePage = BuyerStorePage.Storefront },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+
+                    BuyerStorePage.Storefront -> BuyerStorefrontScreen(
+                        onBack = { buyerStorePage = BuyerStorePage.Directory },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+                }
+            } else {
+                HomeScreen(
+                    role = role,
+                    fullName = fullName,
+                    isPreviewMode = isPreviewMode,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                )
+            }
             MainSection.Beranda -> HomeScreen(
                 role = role,
                 fullName = fullName,

@@ -17,7 +17,7 @@ TANICO is an Android marketplace for organic agricultural harvest waste. The app
 ### Buyer (`buyer`)
 - Register and sign in.
 - Manage profile and delivery addresses.
-- Browse, search, and filter products.
+- Browse, search, and filter products; browse nearby stores and view storefronts.
 - View product details.
 - Manage cart items.
 - Checkout one store at a time.
