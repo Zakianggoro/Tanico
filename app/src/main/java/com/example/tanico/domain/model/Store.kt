@@ -10,8 +10,16 @@ data class Store(
     val storeName: String,
     val description: String?,
     val address: String,
-    val latitude: BigDecimal,
-    val longitude: BigDecimal,
-    val createdAt: Instant?,
-    val updatedAt: Instant?
+    val latitude: Double,
+    val longitude: Double,
+    val createdAt: Instant,
+    val updatedAt: Instant
+)
+
+data class StoreInput(
+    val storeName: String,
+    val description: String?,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double
 )
