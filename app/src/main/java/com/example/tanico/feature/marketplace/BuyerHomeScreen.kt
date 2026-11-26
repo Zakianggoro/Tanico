@@ -35,6 +35,7 @@ fun BuyerHomeScreen(
     fullName: String,
     state: BuyerHomeUiState,
     onRetry: () -> Unit,
+    onBrowseStores: () -> Unit,
     onCalibrateLocation: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     modifier: Modifier = Modifier
@@ -158,6 +159,13 @@ fun BuyerHomeScreen(
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+        }
+
+        TextButton(
+            onClick = onBrowseStores,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Jelajahi toko  →")
         }
 
         Row(
