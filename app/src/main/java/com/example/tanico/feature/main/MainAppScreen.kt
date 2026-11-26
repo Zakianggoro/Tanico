@@ -61,22 +61,6 @@ fun MainAppScreen(
     message: String?,
     analyticsState: SellerAnalyticsUiState,
     onAnalyticsRetry: () -> Unit,
-    buyerHomeState: BuyerHomeUiState,
-    onBuyerHomeRetry: () -> Unit,
-    onBuyerHomeCalibrateLocation: () -> Unit,
-    onBuyerHomeOpenLocationSettings: () -> Unit,
-    buyerAddressState: BuyerAddressUiState,
-    onBuyerAddressRetry: () -> Unit,
-    onBuyerAddressEdit: () -> Unit,
-    onBuyerAddressCancel: () -> Unit,
-    onBuyerAddressSave: () -> Unit,
-    onBuyerRecipientChanged: (String) -> Unit,
-    onBuyerPhoneChanged: (String) -> Unit,
-    onBuyerAddressLineChanged: (String) -> Unit,
-    onBuyerCityChanged: (String) -> Unit,
-    onBuyerPostalCodeChanged: (String) -> Unit,
-    onBuyerLatitudeChanged: (String) -> Unit,
-    onBuyerLongitudeChanged: (String) -> Unit,
     onFullNameChanged: (String) -> Unit,
     onPhoneNumberChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
@@ -161,18 +145,6 @@ fun MainAppScreen(
                 message = message,
                 analyticsState = analyticsState,
                 onAnalyticsRetry = onAnalyticsRetry,
-                buyerAddressState = buyerAddressState,
-                onBuyerAddressRetry = onBuyerAddressRetry,
-                onBuyerAddressEdit = onBuyerAddressEdit,
-                onBuyerAddressCancel = onBuyerAddressCancel,
-                onBuyerAddressSave = onBuyerAddressSave,
-                onBuyerRecipientChanged = onBuyerRecipientChanged,
-                onBuyerPhoneChanged = onBuyerPhoneChanged,
-                onBuyerAddressLineChanged = onBuyerAddressLineChanged,
-                onBuyerCityChanged = onBuyerCityChanged,
-                onBuyerPostalCodeChanged = onBuyerPostalCodeChanged,
-                onBuyerLatitudeChanged = onBuyerLatitudeChanged,
-                onBuyerLongitudeChanged = onBuyerLongitudeChanged,
                 onFullNameChanged = onFullNameChanged,
                 onPhoneNumberChanged = onPhoneNumberChanged,
                 onEmailChanged = onEmailChanged,
@@ -230,6 +202,14 @@ fun MainAppScreen(
                         .padding(innerPadding)
                 )
             }
+            MainSection.Beranda -> HomeScreen(
+                role = role,
+                fullName = fullName,
+                isPreviewMode = isPreviewMode,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
 
             MainSection.Notifikasi -> TanicoEmptyState(
                 title = "Belum ada notifikasi",

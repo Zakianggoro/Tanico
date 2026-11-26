@@ -12,10 +12,15 @@ supabase = "3.9.0"
 ktor = "3.6.1"
 desugar = "2.1.5"
 coroutinesTest = "1.10.2"
-maplibreCompose = "0.20.0"
+coil3 = "3.3.0"
+maplibre = "0.20.0"
 
 [libraries]
+maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version.ref = "maplibre" }
+maplibre-compose-runtime-vulkan-android = { module = "org.maplibre.compose:maplibre-compose-runtime-vulkan-android", version.ref = "maplibre" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+coil3-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil3" }
+coil3-network-ktor3 = { group = "io.coil-kt.coil3", name = "coil-network-ktor3", version.ref = "coil3" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -36,8 +41,6 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
-maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version.ref = "maplibreCompose" }
-maplibre-compose-runtime-opengl = { module = "org.maplibre.compose:maplibre-compose-runtime-opengl-android", version.ref = "maplibreCompose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

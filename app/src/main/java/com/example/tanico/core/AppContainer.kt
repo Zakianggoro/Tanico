@@ -6,6 +6,7 @@ import com.example.tanico.data.repository.SupabaseBuyerAddressRepository
 import com.example.tanico.data.repository.SupabaseMarketplaceRepository
 import com.example.tanico.data.repository.SupabaseSellerAnalyticsRepository
 import com.example.tanico.data.repository.SupabaseSellerStoreRepository
+import com.example.tanico.feature.Notification.data.SupabaseNotificationsRepository
 
 object AppContainer {
     val authRepository by lazy { SupabaseAuthRepository(SupabaseClientProvider) }
@@ -16,5 +17,9 @@ object AppContainer {
     }
     val sellerStoreRepository by lazy {
         SupabaseSellerStoreRepository(SupabaseClientProvider)
+    }
+
+    val notificationsRepository by lazy {
+        SupabaseNotificationsRepository(SupabaseClientProvider)
     }
 }

@@ -20,3 +20,6 @@ val DarkSurface = Color(0xFF1C211B)
 val DarkTextPrimary = Color(0xFFE5E5DB)
 val DarkTextSecondary = Color(0xFFBEC2B4)
 val DarkNaturalBeige = Color(0xFF484D40)
+
+val MainText = TextPrimary
+val MutedText = TextSecondary
