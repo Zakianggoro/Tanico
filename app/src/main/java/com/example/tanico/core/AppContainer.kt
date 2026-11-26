@@ -13,4 +13,5 @@ object AppContainer {
     val sellerStoreRepository by lazy {
         SupabaseSellerStoreRepository(SupabaseClientProvider)
     }
+    val sellerProductRepository by lazy { SupabaseSellerProductRepository(SupabaseClientProvider) }
 }

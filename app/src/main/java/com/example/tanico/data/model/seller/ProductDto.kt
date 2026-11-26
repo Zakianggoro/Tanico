@@ -5,6 +5,7 @@ import java.math.BigDecimal
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** Table: products. Query with `select=*,product_images(*)` to fill [productImages]. */
 @Serializable
 data class ProductDto(
     val id: String,
@@ -24,8 +25,22 @@ data class ProductDto(
 )
 
 @Serializable
-data class ProductWriteDto(
-    @SerialName("store_id") val storeId: String? = null,
+data class ProductInsertDto(
+    @SerialName("store_id") val storeId: String,
+    @SerialName("category_id") val categoryId: String,
+    val name: String,
+    val description: String?,
+    @Serializable(with = BigDecimalSerializer::class) val price: BigDecimal,
+    val stock: Int,
+    val unit: String,
+    @SerialName("weight_per_unit_kg")
+    @Serializable(with = BigDecimalSerializer::class) val weightPerUnitKg: BigDecimal,
+    val status: String
+)
+
+
+@Serializable
+data class ProductUpdateDto(
     @SerialName("category_id") val categoryId: String,
     val name: String,
     val description: String?,
