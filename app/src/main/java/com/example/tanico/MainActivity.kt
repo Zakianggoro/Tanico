@@ -22,6 +22,10 @@ import com.example.tanico.feature.auth.AuthViewModelFactory
 import com.example.tanico.feature.auth.EmailVerificationScreen
 import com.example.tanico.feature.auth.RegistrationScreen
 import com.example.tanico.feature.main.MainAppScreen
+import com.example.tanico.feature.marketplace.BuyerHomeViewModel
+import com.example.tanico.feature.marketplace.BuyerHomeViewModelFactory
+import com.example.tanico.feature.profile.BuyerAddressViewModel
+import com.example.tanico.feature.profile.BuyerAddressViewModelFactory
 import com.example.tanico.feature.seller.SellerAnalyticsViewModel
 import com.example.tanico.feature.seller.SellerAnalyticsViewModelFactory
 import com.example.tanico.ui.theme.TanicoTheme
@@ -35,13 +39,23 @@ class MainActivity : ComponentActivity() {
                 val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory())
                 val analyticsViewModel: SellerAnalyticsViewModel =
                     viewModel(factory = SellerAnalyticsViewModelFactory())
+                val buyerHomeViewModel: BuyerHomeViewModel =
+                    viewModel(factory = BuyerHomeViewModelFactory())
+                val buyerAddressViewModel: BuyerAddressViewModel =
+                    viewModel(factory = BuyerAddressViewModelFactory())
                 val state by authViewModel.uiState
                 val analyticsState by analyticsViewModel.uiState
+                val buyerHomeState by buyerHomeViewModel.uiState
+                val buyerAddressState by buyerAddressViewModel.uiState
                 TanicoApp(
                     state = state,
                     viewModel = authViewModel,
                     analyticsState = analyticsState,
-                    analyticsViewModel = analyticsViewModel
+                    analyticsViewModel = analyticsViewModel,
+                    buyerHomeState = buyerHomeState,
+                    buyerHomeViewModel = buyerHomeViewModel,
+                    buyerAddressState = buyerAddressState,
+                    buyerAddressViewModel = buyerAddressViewModel
                 )
             }
         }
@@ -53,14 +67,41 @@ private fun TanicoApp(
     state: AuthUiState,
     viewModel: AuthViewModel,
     analyticsState: com.example.tanico.feature.seller.SellerAnalyticsUiState,
-    analyticsViewModel: SellerAnalyticsViewModel
+    analyticsViewModel: SellerAnalyticsViewModel,
+    buyerHomeState: com.example.tanico.feature.marketplace.BuyerHomeUiState,
+    buyerHomeViewModel: BuyerHomeViewModel,
+    buyerAddressState: com.example.tanico.feature.profile.BuyerAddressUiState,
+    buyerAddressViewModel: BuyerAddressViewModel
 ) {
     val sellerUserId = (state.sessionState as? AppSessionState.Authenticated)
         ?.profile
         ?.takeIf { it.role == UserRole.Seller && !state.isPreviewMode }
         ?.id
+    val buyerProfile = (state.sessionState as? AppSessionState.Authenticated)
+        ?.profile
+        ?.takeIf { it.role == UserRole.Buyer && !state.isPreviewMode }
+    val isBuyerMain = (state.destination as? AppDestination.Main)?.role == UserRole.Buyer
     LaunchedEffect(sellerUserId) {
         sellerUserId?.let(analyticsViewModel::load)
+    }
+    LaunchedEffect(isBuyerMain, state.isPreviewMode) {
+        if (isBuyerMain) buyerHomeViewModel.load() else buyerHomeViewModel.reset()
+    }
+    LaunchedEffect(buyerProfile?.id, isBuyerMain, state.isPreviewMode) {
+        when {
+            buyerProfile != null -> buyerAddressViewModel.load(
+                userId = buyerProfile.id,
+                fullName = state.fullName,
+                phone = state.phoneNumber,
+                city = state.location
+            )
+            isBuyerMain && state.isPreviewMode -> buyerAddressViewModel.preparePreview(
+                fullName = state.fullName,
+                phone = state.phoneNumber,
+                city = state.location
+            )
+            else -> buyerAddressViewModel.reset()
+        }
     }
 
     if (state.sessionState == AppSessionState.Loading && !state.isPreviewMode) {
@@ -121,6 +162,34 @@ private fun TanicoApp(
             message = state.message,
             analyticsState = analyticsState,
             onAnalyticsRetry = { sellerUserId?.let(analyticsViewModel::load) },
+            buyerHomeState = buyerHomeState,
+            onBuyerHomeRetry = buyerHomeViewModel::load,
+            buyerAddressState = buyerAddressState,
+            onBuyerAddressRetry = {
+                buyerProfile?.let { profile ->
+                    buyerAddressViewModel.load(
+                        userId = profile.id,
+                        fullName = state.fullName,
+                        phone = state.phoneNumber,
+                        city = state.location
+                    )
+                }
+            },
+            onBuyerAddressEdit = buyerAddressViewModel::startEditing,
+            onBuyerAddressCancel = buyerAddressViewModel::cancelEditing,
+            onBuyerAddressSave = {
+                buyerAddressViewModel.save(
+                    userId = buyerProfile?.id,
+                    isPreviewMode = state.isPreviewMode
+                )
+            },
+            onBuyerRecipientChanged = buyerAddressViewModel::updateRecipientName,
+            onBuyerPhoneChanged = buyerAddressViewModel::updatePhone,
+            onBuyerAddressLineChanged = buyerAddressViewModel::updateAddressLine,
+            onBuyerCityChanged = buyerAddressViewModel::updateCity,
+            onBuyerPostalCodeChanged = buyerAddressViewModel::updatePostalCode,
+            onBuyerLatitudeChanged = buyerAddressViewModel::updateLatitude,
+            onBuyerLongitudeChanged = buyerAddressViewModel::updateLongitude,
             onFullNameChanged = viewModel::updateFullName,
             onPhoneNumberChanged = viewModel::updatePhoneNumber,
             onEmailChanged = viewModel::updateEmail,
