@@ -92,13 +92,13 @@ fun RegistrationScreen(
                     AuthField(
                         value = state.phoneNumber,
                         onValueChange = onPhoneNumberChanged,
-                        label = "Nomor WhatsApp Aktif *",
+                        label = "Nomor Telepon Aktif *",
                         placeholder = "+62 812-3456-7890"
                     )
                     AuthField(
                         value = state.email,
                         onValueChange = onEmailChanged,
-                        label = "Alamat Email (opsional)",
+                        label = "Alamat Email *",
                         placeholder = "nama@email.com"
                     )
                     AuthField(
@@ -129,7 +129,8 @@ fun RegistrationScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = state.termsAccepted,
-                            onCheckedChange = onTermsAcceptedChanged
+                            onCheckedChange = onTermsAcceptedChanged,
+                            enabled = !state.isLoading
                         )
                         Text(
                             text = "Saya menyetujui Syarat & Ketentuan dan Kebijakan Privasi TANICO.",
@@ -143,36 +144,39 @@ fun RegistrationScreen(
                         onClick = onSubmit,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(52.dp),
+                        enabled = !state.isLoading
                     ) {
-                        Text("Daftar & Verifikasi Akun  →")
+                        Text(if (state.isLoading) "Memproses..." else "Daftar Akun  →")
                     }
                 }
             }
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            if (state.isPreviewAvailable) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(
-                        text = "Coba tampilan sesuai peran",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Pratinjau tidak membuat akun dan tidak menyimpan data ke server.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedButton(
-                        onClick = { onPreview(state.selectedRole) },
-                        modifier = Modifier.fillMaxWidth()
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Lihat pratinjau sebagai ${state.selectedRole.label()}")
+                        Text(
+                            text = "Coba tampilan sesuai peran",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Pratinjau tidak membuat akun dan tidak menyimpan data ke server.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedButton(
+                            onClick = { onPreview(state.selectedRole) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Lihat pratinjau sebagai ${state.selectedRole.label()}")
+                        }
                     }
                 }
             }

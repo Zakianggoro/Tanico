@@ -36,7 +36,6 @@ import com.example.tanico.domain.model.UserRole
 @Composable
 fun AuthEntryScreen(
     state: AuthUiState,
-    onRoleSelected: (UserRole) -> Unit,
     onLoginIdentifierChanged: (String) -> Unit,
     onPasswordChanged: (String) -> Unit,
     onLogin: () -> Unit,
@@ -75,13 +74,11 @@ fun AuthEntryScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Masuk untuk melanjutkan dan mengelola akun TANICO Anda.",
+                    text = "Masuk menggunakan alamat email dan kata sandi. Peran dibaca dari profil akun.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            RoleSelector(selectedRole = state.selectedRole, onRoleSelected = onRoleSelected)
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -94,8 +91,8 @@ fun AuthEntryScreen(
                     AuthField(
                         value = state.loginIdentifier,
                         onValueChange = onLoginIdentifierChanged,
-                        label = "Nomor WhatsApp atau Email",
-                        placeholder = "+62 812-3456-7890 atau email@contoh.id"
+                        label = "Alamat email",
+                        placeholder = "email@contoh.id"
                     )
                     var passwordVisible by remember { mutableStateOf(false) }
                     OutlinedTextField(
@@ -125,9 +122,10 @@ fun AuthEntryScreen(
                         onClick = onLogin,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(52.dp),
+                        enabled = !state.isLoading
                     ) {
-                        Text("Masuk Sekarang  →")
+                        Text(if (state.isLoading) "Memproses..." else "Masuk Sekarang  →")
                     }
                     Text(
                         text = "Belum punya akun TANICO?",
@@ -136,43 +134,46 @@ fun AuthEntryScreen(
                     )
                     OutlinedButton(
                         onClick = onRegister,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !state.isLoading
                     ) {
                         Text("Daftar Akun Baru")
                     }
                 }
             }
 
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+            if (state.isPreviewAvailable) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(
-                        text = "Pratinjau aplikasi",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Masuk ke tampilan contoh tanpa membuat akun atau mengirim data.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = { onPreview(UserRole.Buyer) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Pembeli")
-                        }
-                        OutlinedButton(
-                            onClick = { onPreview(UserRole.Seller) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Penjual")
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Pratinjau aplikasi",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Mode ini hanya untuk melihat tampilan. Tidak membuat akun atau menyimpan data.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { onPreview(UserRole.Buyer) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Pembeli")
+                            }
+                            OutlinedButton(
+                                onClick = { onPreview(UserRole.Seller) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Penjual")
+                            }
                         }
                     }
                 }
@@ -220,7 +221,7 @@ internal fun BrandHeader(modifier: Modifier = Modifier) {
 internal fun RoleSelector(
     selectedRole: UserRole,
     onRoleSelected: (UserRole) -> Unit,
-    heading: String = "Masuk sebagai",
+    heading: String = "Pilih peran utama Anda",
     compact: Boolean = false
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

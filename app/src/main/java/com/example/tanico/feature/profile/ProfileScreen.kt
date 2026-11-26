@@ -26,6 +26,7 @@ import com.example.tanico.domain.model.UserRole
 @Composable
 fun ProfileScreen(
     role: UserRole,
+    isPreviewMode: Boolean,
     fullName: String,
     phoneNumber: String,
     email: String,
@@ -33,6 +34,7 @@ fun ProfileScreen(
     storeName: String,
     storeAddress: String,
     isEditing: Boolean,
+    isLoading: Boolean,
     message: String?,
     onFullNameChanged: (String) -> Unit,
     onPhoneNumberChanged: (String) -> Unit,
@@ -42,6 +44,7 @@ fun ProfileScreen(
     onStoreAddressChanged: (String) -> Unit,
     onEdit: () -> Unit,
     onSave: () -> Unit,
+    onSignOut: () -> Unit,
     onExitPreview: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -79,7 +82,7 @@ fun ProfileScreen(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = fullName.ifBlank { "Profil pratinjau" },
+                        text = fullName.ifBlank { "Profil TANICO" },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -88,11 +91,13 @@ fun ProfileScreen(
                         color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Text(
-                        text = "Mode pratinjau · belum terhubung ke akun",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    if (isPreviewMode) {
+                        Text(
+                            text = "Mode pratinjau · belum terhubung ke akun",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -106,38 +111,42 @@ fun ProfileScreen(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = "Informasi Akun",
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Text("Informasi Akun", style = MaterialTheme.typography.titleLarge)
                 if (isEditing) {
                     TanicoTextField(
                         value = fullName,
                         onValueChange = onFullNameChanged,
                         label = "Nama lengkap",
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
                     )
-                    TanicoTextField(
-                        value = phoneNumber,
-                        onValueChange = onPhoneNumberChanged,
-                        label = "Nomor WhatsApp",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    TanicoTextField(
-                        value = email,
-                        onValueChange = onEmailChanged,
-                        label = "Alamat email",
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    TanicoTextField(
-                        value = location,
-                        onValueChange = onLocationChanged,
-                        label = "Domisili",
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    if (isPreviewMode) {
+                        TanicoTextField(
+                            value = phoneNumber,
+                            onValueChange = onPhoneNumberChanged,
+                            label = "Nomor telepon",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        TanicoTextField(
+                            value = email,
+                            onValueChange = onEmailChanged,
+                            label = "Alamat email",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        TanicoTextField(
+                            value = location,
+                            onValueChange = onLocationChanged,
+                            label = "Domisili",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        ProfileDetail(label = "Nomor telepon", value = phoneNumber)
+                        ProfileDetail(label = "Alamat email", value = email)
+                        ProfileDetail(label = "Domisili", value = location)
+                    }
                 } else {
                     ProfileDetail(label = "Nama lengkap", value = fullName)
-                    ProfileDetail(label = "Nomor WhatsApp", value = phoneNumber)
+                    ProfileDetail(label = "Nomor telepon", value = phoneNumber)
                     ProfileDetail(label = "Alamat email", value = email)
                     ProfileDetail(label = "Domisili", value = location)
                 }
@@ -159,11 +168,11 @@ fun ProfileScreen(
                 )
                 if (role == UserRole.Buyer) {
                     Text(
-                        text = "Alamat pengiriman dapat dikelola setelah akun dan layanan TANICO tersedia.",
+                        text = "Alamat pengiriman dapat dikelola setelah fitur alamat TANICO tersedia.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else if (isEditing) {
+                } else if (isPreviewMode && isEditing) {
                     TanicoTextField(
                         value = storeName,
                         onValueChange = onStoreNameChanged,
@@ -179,6 +188,13 @@ fun ProfileScreen(
                 } else {
                     ProfileDetail(label = "Nama toko", value = storeName)
                     ProfileDetail(label = "Alamat operasional", value = storeAddress)
+                    if (!isPreviewMode) {
+                        Text(
+                            "Pengaturan toko akan tersedia pada tahap onboarding penjual.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -192,16 +208,28 @@ fun ProfileScreen(
         }
 
         if (isEditing) {
-            Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
-                Text("Simpan perubahan sementara")
+            Button(
+                onClick = onSave,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
+            ) {
+                Text(if (isLoading) "Menyimpan..." else if (isPreviewMode) "Simpan pratinjau" else "Simpan perubahan")
             }
         } else {
-            OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = onEdit,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
+            ) {
                 Text("Ubah Profil")
             }
         }
-        OutlinedButton(onClick = onExitPreview, modifier = Modifier.fillMaxWidth()) {
-            Text("Kembali ke Login")
+        OutlinedButton(
+            onClick = if (isPreviewMode) onExitPreview else onSignOut,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading
+        ) {
+            Text(if (isPreviewMode) "Kembali ke Login" else "Keluar dari Akun")
         }
     }
 }

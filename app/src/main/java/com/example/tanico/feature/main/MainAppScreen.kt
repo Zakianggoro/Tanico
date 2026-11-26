@@ -23,9 +23,12 @@ import androidx.compose.ui.unit.dp
 import com.example.tanico.core.ui.TanicoEmptyState
 import com.example.tanico.domain.model.UserRole
 import com.example.tanico.feature.profile.ProfileScreen
+import com.example.tanico.feature.seller.SellerAnalyticsScreen
+import com.example.tanico.feature.seller.SellerAnalyticsUiState
 
 enum class MainSection(val label: String, val marker: String) {
     Beranda("Beranda", "⌂"),
+    Analitik("Analitik", "▥"),
     Notifikasi("Notifikasi", "●"),
     Pembelajaran("Pembelajaran", "▤"),
     Profil("Profil", "○")
@@ -34,6 +37,7 @@ enum class MainSection(val label: String, val marker: String) {
 @Composable
 fun MainAppScreen(
     role: UserRole,
+    isPreviewMode: Boolean,
     fullName: String,
     phoneNumber: String,
     email: String,
@@ -41,7 +45,10 @@ fun MainAppScreen(
     storeName: String,
     storeAddress: String,
     editingProfile: Boolean,
+    isLoading: Boolean,
     message: String?,
+    analyticsState: SellerAnalyticsUiState,
+    onAnalyticsRetry: () -> Unit,
     onFullNameChanged: (String) -> Unit,
     onPhoneNumberChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
@@ -50,9 +57,15 @@ fun MainAppScreen(
     onStoreAddressChanged: (String) -> Unit,
     onEditProfile: () -> Unit,
     onSaveProfile: () -> Unit,
+    onSignOut: () -> Unit,
     onExitPreview: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sections = if (role == UserRole.Seller) {
+        listOf(MainSection.Beranda, MainSection.Analitik, MainSection.Notifikasi, MainSection.Profil)
+    } else {
+        listOf(MainSection.Beranda, MainSection.Notifikasi, MainSection.Pembelajaran, MainSection.Profil)
+    }
     var selectedSection by rememberSaveable(role) {
         mutableStateOf(MainSection.Beranda.name)
     }
@@ -63,7 +76,7 @@ fun MainAppScreen(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                MainSection.entries.forEach { item ->
+                sections.forEach { item ->
                     NavigationBarItem(
                         selected = section == item,
                         onClick = { selectedSection = item.name },
@@ -84,6 +97,7 @@ fun MainAppScreen(
         when (section) {
             MainSection.Profil -> ProfileScreen(
                 role = role,
+                isPreviewMode = isPreviewMode,
                 fullName = fullName,
                 phoneNumber = phoneNumber,
                 email = email,
@@ -91,6 +105,7 @@ fun MainAppScreen(
                 storeName = storeName,
                 storeAddress = storeAddress,
                 isEditing = editingProfile,
+                isLoading = isLoading,
                 message = message,
                 onFullNameChanged = onFullNameChanged,
                 onPhoneNumberChanged = onPhoneNumberChanged,
@@ -100,18 +115,39 @@ fun MainAppScreen(
                 onStoreAddressChanged = onStoreAddressChanged,
                 onEdit = onEditProfile,
                 onSave = onSaveProfile,
+                onSignOut = onSignOut,
                 onExitPreview = onExitPreview,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             )
 
-            MainSection.Beranda -> PreviewHome(
+            MainSection.Beranda -> HomeScreen(
                 role = role,
+                fullName = fullName,
+                isPreviewMode = isPreviewMode,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             )
+
+            MainSection.Analitik -> if (role == UserRole.Seller) {
+                SellerAnalyticsScreen(
+                    state = analyticsState,
+                    onRetry = onAnalyticsRetry,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                )
+            } else {
+                TanicoEmptyState(
+                    title = "Analitik penjual",
+                    message = "Ringkasan ini tersedia untuk akun penjual.",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                )
+            }
 
             MainSection.Notifikasi -> TanicoEmptyState(
                 title = "Belum ada notifikasi",
@@ -133,7 +169,12 @@ fun MainAppScreen(
 }
 
 @Composable
-private fun PreviewHome(role: UserRole, modifier: Modifier = Modifier) {
+private fun HomeScreen(
+    role: UserRole,
+    fullName: String,
+    isPreviewMode: Boolean,
+    modifier: Modifier = Modifier
+) {
     val roleTitle = if (role == UserRole.Buyer) "Pembeli / Bio-Industri" else "Penjual / Petani & Pengepul"
     Column(
         modifier = modifier.padding(24.dp),
@@ -146,7 +187,7 @@ private fun PreviewHome(role: UserRole, modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Halo, $roleTitle",
+            text = "Halo, ${fullName.ifBlank { roleTitle }}",
             style = MaterialTheme.typography.headlineMedium
         )
         Card(
@@ -158,18 +199,28 @@ private fun PreviewHome(role: UserRole, modifier: Modifier = Modifier) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Mode pratinjau",
+                    text = if (isPreviewMode) "Mode pratinjau" else "Akun ${roleTitle}",
                     style = MaterialTheme.typography.titleLarge
                 )
                 Text(
-                    text = "Anda sedang melihat kerangka aplikasi. Data dan transaksi belum tersedia, dan tidak ada akun yang dibuat.",
+                    text = if (isPreviewMode) {
+                        "Data dan transaksi belum tersedia. Pratinjau ini tidak membuat akun."
+                    } else if (role == UserRole.Seller) {
+                        "Gunakan tab Analitik untuk melihat omzet dari pesanan yang telah selesai."
+                    } else {
+                        "Akun Anda siap digunakan. Fitur marketplace akan hadir pada tahap berikutnya."
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         Text(
-            text = "Gunakan tab Profil untuk melihat informasi profil ${if (role == UserRole.Buyer) "pembeli" else "penjual"}.",
+            text = if (isPreviewMode) {
+                "Gunakan tab Profil untuk melihat tampilan profil ${if (role == UserRole.Buyer) "pembeli" else "penjual"}."
+            } else {
+                "Gunakan tab Profil untuk mengelola informasi akun Anda."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
