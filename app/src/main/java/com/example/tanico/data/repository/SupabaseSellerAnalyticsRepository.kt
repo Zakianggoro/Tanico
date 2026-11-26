@@ -32,7 +32,7 @@ class SupabaseSellerAnalyticsRepository(
         val firstMonth = currentMonth.minusMonths(5)
         val since = firstMonth.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC).toString()
         val orders = client.from("orders")
-            .select(columns = Columns.list("status", "subtotal", "created_at")) {
+            .select(columns = Columns.list("status", "subtotal", "created_at", "total_weight_kg")) {
                 filter {
                     eq("store_id", store.id)
                     gte("created_at", since)
@@ -42,7 +42,14 @@ class SupabaseSellerAnalyticsRepository(
 
         Result.success(
             calculateSellerAnalytics(
-                orders = orders.map { SellerOrderMetric(it.status, it.subtotal, it.createdAt) },
+                orders = orders.map {
+                    SellerOrderMetric(
+                        status = it.status,
+                        subtotal = it.subtotal,
+                        createdAt = it.createdAt,
+                        totalWeightKg = it.totalWeightKg
+                    )
+                },
                 currentMonth = currentMonth
             )
         )
@@ -59,6 +66,7 @@ class SupabaseSellerAnalyticsRepository(
     private data class OrderRow(
         val status: String,
         val subtotal: Double,
-        @SerialName("created_at") val createdAt: String
+        @SerialName("created_at") val createdAt: String,
+        @SerialName("total_weight_kg") val totalWeightKg: Double
     )
 }

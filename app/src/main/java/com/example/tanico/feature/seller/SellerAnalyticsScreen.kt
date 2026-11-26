@@ -136,23 +136,33 @@ internal fun SellerRevenueChart(months: List<MonthlyRevenue>) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp),
+            .height(180.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Bottom
     ) {
-        months.forEach { monthlyRevenue ->
+        months.forEachIndexed { index, monthlyRevenue ->
             val fraction = monthlyRevenue.amount.toFloat() / maxAmount.toFloat()
             Column(
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom
             ) {
+                Text(
+                    text = formatCompactRupiah(monthlyRevenue.amount).removePrefix("Rp").trim(),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Box(
                     modifier = Modifier
                         .width(22.dp)
                         .height((fraction * 112f).coerceAtLeast(6f).dp)
                         .background(
-                            color = MaterialTheme.colorScheme.primary,
+                            color = if (index == months.lastIndex) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            },
                             shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
                         )
                 )
@@ -173,3 +183,15 @@ internal fun formatRupiah(amount: Long): String = NumberFormat.getCurrencyInstan
         minimumFractionDigits = 0
     }
     .format(amount)
+
+internal fun formatCompactRupiah(amount: Long): String {
+    val (scaledAmount, suffix) = when {
+        amount >= 1_000_000 -> amount / 1_000_000.0 to "jt"
+        amount >= 1_000 -> amount / 1_000.0 to "rb"
+        else -> return formatRupiah(amount)
+    }
+    val formattedAmount = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID"))
+        .apply { maximumFractionDigits = 2 }
+        .format(scaledAmount)
+    return "Rp$formattedAmount $suffix"
+}

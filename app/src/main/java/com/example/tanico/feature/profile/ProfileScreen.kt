@@ -28,7 +28,10 @@ import com.example.tanico.core.ui.TanicoTextField
 import com.example.tanico.domain.model.UserRole
 import com.example.tanico.feature.seller.SellerAnalyticsUiState
 import com.example.tanico.feature.seller.SellerRevenueChart
-import com.example.tanico.feature.seller.formatRupiah
+import com.example.tanico.feature.seller.formatCompactRupiah
+import java.text.NumberFormat
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun ProfileScreen(
@@ -58,7 +61,6 @@ fun ProfileScreen(
     onCreateStore: (String, String, String, String) -> Unit,
     onEdit: () -> Unit,
     onSave: () -> Unit,
-    onOpenAnalytics: () -> Unit,
     onSignOut: () -> Unit,
     onExitPreview: () -> Unit,
     modifier: Modifier = Modifier
@@ -108,8 +110,7 @@ fun ProfileScreen(
                 isPreviewMode = isPreviewMode,
                 state = analyticsState,
                 onRetry = onAnalyticsRetry,
-                onEditProfile = onEdit,
-                onOpenAnalytics = onOpenAnalytics
+                onEditProfile = onEdit
             )
         }
 
@@ -301,77 +302,54 @@ private fun SellerDashboardSections(
     isPreviewMode: Boolean,
     state: SellerAnalyticsUiState,
     onRetry: () -> Unit,
-    onEditProfile: () -> Unit,
-    onOpenAnalytics: () -> Unit
+    onEditProfile: () -> Unit
 ) {
     val analytics = state.analytics
-    val revenueText = when {
+    val unavailableValue = when {
         isPreviewMode -> "Tidak tersedia"
         state.isLoading -> "Memuat..."
-        analytics != null -> formatRupiah(analytics.completedRevenue)
-        state.storeMissing -> "Toko belum dibuat"
-        else -> "Belum tersedia"
+        state.storeMissing -> "Belum ada toko"
+        else -> "—"
     }
+    val revenue = analytics?.currentMonthCompletedRevenue
+    val revenueText = revenue?.let(::formatCompactRupiah) ?: unavailableValue
+    val completedOrdersText = analytics?.currentMonthCompletedOrderCount?.toString() ?: unavailableValue
+    val wasteText = analytics?.let { formatWasteTons(it.currentMonthDivertedWasteKg) } ?: unavailableValue
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.primary,
-        contentColor = MaterialTheme.colorScheme.onPrimary,
-        shape = MaterialTheme.shapes.large
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                "OMZET PRODUK SELESAI",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.82f)
-            )
-            Text(
-                revenueText,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "Subtotal produk dari pesanan selesai, tidak termasuk ongkir.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.88f)
-            )
-            if (!isPreviewMode) {
-                TextButton(onClick = onOpenAnalytics) {
-                    Text("Lihat analitik", color = MaterialTheme.colorScheme.onPrimary)
-                }
-            }
-        }
-    }
-
-    ProfileSectionCard(title = "Ringkasan Penjualan") {
+    ProfileSectionCard(title = "Ringkasan Bulan Ini") {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
         ) {
             SellerMetricCard(
-                label = "Pesanan selesai",
-                value = analytics?.completedOrderCount?.toString() ?: "—",
+                label = "Omzet selesai",
+                value = revenueText,
+                supportingText = analytics?.let {
+                    revenueComparisonLabel(
+                        it.currentMonthCompletedRevenue,
+                        it.previousMonthCompletedRevenue
+                    )
+                },
                 modifier = Modifier.weight(1f)
             )
             SellerMetricCard(
-                label = "Menunggu diproses",
-                value = analytics?.pendingOrderCount?.toString() ?: "—",
+                label = "Pesanan usai",
+                value = completedOrdersText,
+                supportingText = "Bulan ini",
+                modifier = Modifier.weight(1f)
+            )
+            SellerMetricCard(
+                label = "Limbah salur",
+                value = wasteText,
+                supportingText = "Bulan ini",
                 modifier = Modifier.weight(1f)
             )
         }
-
         when {
-            isPreviewMode -> Text(
-                "Data penjualan hanya tersedia untuk akun penjual yang terhubung.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             state.isLoading -> Text(
                 "Memuat ringkasan penjualan...",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             state.message != null -> {
@@ -380,37 +358,61 @@ private fun SellerDashboardSections(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )
-                TextButton(onClick = onRetry) {
-                    Text("Coba lagi")
-                }
+                TextButton(onClick = onRetry) { Text("Coba lagi") }
             }
             state.storeMissing -> Text(
-                "Profil toko belum tersedia. Ringkasan akan muncul setelah toko dibuat.",
-                style = MaterialTheme.typography.bodyMedium,
+                "Ringkasan akan muncul setelah toko dibuat.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            analytics != null -> Text(
+                "Omzet dan berat dihitung dari pesanan selesai. Omzet tidak termasuk ongkir.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 
-    ProfileSectionCard(title = "Aksi Cepat") {
+    ProfileSectionCard(title = "Aksi Cepat Petani") {
+        SellerQuickActionCard(
+            title = "Ubah profil",
+            description = "Kelola informasi akun dan toko",
+            onClick = onEditProfile,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+
+    ProfileSectionCard(title = "Ringkasan Penjualan (6 Bulan)") {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            TextButton(onClick = onEditProfile) {
-                Text("Ubah Profil")
-            }
-            TextButton(onClick = onOpenAnalytics, enabled = !isPreviewMode) {
-                Text("Analitik")
-            }
+            SellerMetricCard(
+                label = "Omzet selesai",
+                value = analytics?.let { formatCompactRupiah(it.completedRevenue) } ?: unavailableValue,
+                supportingText = "Total",
+                modifier = Modifier.weight(1f)
+            )
+            SellerMetricCard(
+                label = "Pesanan selesai",
+                value = analytics?.completedOrderCount?.toString() ?: unavailableValue,
+                supportingText = "Selesai",
+                modifier = Modifier.weight(1f)
+            )
+            SellerMetricCard(
+                label = "Menunggu",
+                value = analytics?.pendingOrderCount?.toString() ?: unavailableValue,
+                supportingText = "Diproses",
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 
-    ProfileSectionCard(title = "Tren Omzet Produk") {
+    ProfileSectionCard(title = "Tren Penjualan Limbah") {
         if (analytics != null) {
             Text(
-                "Enam bulan terakhir",
+                "Statistik enam bulan terakhir (Rupiah)",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -434,31 +436,60 @@ private fun SellerDashboardSections(
             )
         }
     }
+}
 
-    ProfileSectionCard(title = "Pesanan Terbaru") {
-        Text(
-            when {
-                isPreviewMode -> "Data pesanan tidak ditampilkan dalam mode pratinjau."
-                analytics?.totalOrderCount == 0 -> "Belum ada data pesanan."
-                analytics != null -> "Ringkasan tersedia di Analitik. Daftar dan tindakan pesanan belum tersedia di sini."
-                state.storeMissing -> "Pesanan akan tampil setelah profil toko tersedia."
-                else -> "Informasi pesanan belum tersedia."
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (!isPreviewMode && (analytics?.totalOrderCount ?: 0) > 0) {
-            TextButton(onClick = onOpenAnalytics) {
-                Text("Buka analitik")
+@Composable
+private fun SellerMetricCard(
+    label: String,
+    value: String,
+    supportingText: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            supportingText?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SellerMetricCard(label: String, value: String, modifier: Modifier = Modifier) {
+private fun SellerQuickActionCard(
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
     Card(
+        onClick = onClick,
         modifier = modifier,
+        enabled = enabled,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -468,18 +499,32 @@ private fun SellerMetricCard(label: String, value: String, modifier: Modifier = 
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             Text(
-                label,
+                description,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
         }
+    }
+}
+
+private fun formatWasteTons(kilograms: Double): String {
+    val tons = NumberFormat.getNumberInstance(Locale.forLanguageTag("id-ID"))
+        .apply { maximumFractionDigits = 1 }
+        .format(kilograms / 1_000.0)
+    return "$tons ton"
+}
+
+private fun revenueComparisonLabel(currentRevenue: Long, previousRevenue: Long): String {
+    if (previousRevenue <= 0L) {
+        return if (currentRevenue > 0L) "Belum ada pembanding" else "Belum ada omzet bulan lalu"
+    }
+    val percentageChange = ((currentRevenue.toDouble() / previousRevenue) * 100 - 100).roundToInt()
+    return when {
+        percentageChange > 0 -> "+$percentageChange% dari bulan lalu"
+        percentageChange < 0 -> "$percentageChange% dari bulan lalu"
+        else -> "Sama dengan bulan lalu"
     }
 }
 
