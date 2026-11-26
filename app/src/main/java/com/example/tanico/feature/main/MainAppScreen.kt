@@ -23,12 +23,10 @@ import androidx.compose.ui.unit.dp
 import com.example.tanico.core.ui.TanicoEmptyState
 import com.example.tanico.domain.model.UserRole
 import com.example.tanico.feature.profile.ProfileScreen
-import com.example.tanico.feature.seller.SellerAnalyticsScreen
 import com.example.tanico.feature.seller.SellerAnalyticsUiState
 
 enum class MainSection(val label: String, val marker: String) {
     Beranda("Beranda", "⌂"),
-    Analitik("Analitik", "▥"),
     Notifikasi("Notifikasi", "●"),
     Pembelajaran("Pembelajaran", "▤"),
     Profil("Profil", "○")
@@ -66,15 +64,17 @@ fun MainAppScreen(
     onExitPreview: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sections = if (role == UserRole.Seller) {
-        listOf(MainSection.Beranda, MainSection.Analitik, MainSection.Notifikasi, MainSection.Profil)
-    } else {
-        listOf(MainSection.Beranda, MainSection.Notifikasi, MainSection.Pembelajaran, MainSection.Profil)
-    }
+    val sections = listOf(
+        MainSection.Beranda,
+        MainSection.Notifikasi,
+        MainSection.Pembelajaran,
+        MainSection.Profil
+    )
     var selectedSection by rememberSaveable(role) {
         mutableStateOf(MainSection.Beranda.name)
     }
-    val section = MainSection.valueOf(selectedSection)
+    val section = MainSection.values().firstOrNull { it.name == selectedSection }
+        ?: MainSection.Beranda
 
     Scaffold(
         modifier = modifier,
@@ -127,7 +127,6 @@ fun MainAppScreen(
                 onCreateStore = onCreateStore,
                 onEdit = onEditProfile,
                 onSave = onSaveProfile,
-                onOpenAnalytics = { selectedSection = MainSection.Analitik.name },
                 onSignOut = onSignOut,
                 onExitPreview = onExitPreview,
                 modifier = Modifier
@@ -143,24 +142,6 @@ fun MainAppScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             )
-
-            MainSection.Analitik -> if (role == UserRole.Seller) {
-                SellerAnalyticsScreen(
-                    state = analyticsState,
-                    onRetry = onAnalyticsRetry,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            } else {
-                TanicoEmptyState(
-                    title = "Analitik penjual",
-                    message = "Ringkasan ini tersedia untuk akun penjual.",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                )
-            }
 
             MainSection.Notifikasi -> TanicoEmptyState(
                 title = "Belum ada notifikasi",
@@ -219,7 +200,7 @@ private fun HomeScreen(
                     text = if (isPreviewMode) {
                         "Data dan transaksi belum tersedia. Pratinjau ini tidak membuat akun."
                     } else if (role == UserRole.Seller) {
-                        "Gunakan tab Analitik untuk melihat omzet dari pesanan yang telah selesai."
+                        "Ringkasan penjualan dan tren omzet tersedia di tab Profil."
                     } else {
                         "Akun Anda siap digunakan. Fitur marketplace akan hadir pada tahap berikutnya."
                     },

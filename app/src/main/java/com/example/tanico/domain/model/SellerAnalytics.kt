@@ -7,6 +7,10 @@ data class SellerAnalytics(
     val completedOrderCount: Int,
     val pendingOrderCount: Int,
     val totalOrderCount: Int,
+    val currentMonthCompletedRevenue: Long,
+    val previousMonthCompletedRevenue: Long,
+    val currentMonthCompletedOrderCount: Int,
+    val currentMonthDivertedWasteKg: Double,
     val monthlyRevenue: List<MonthlyRevenue>
 )
 

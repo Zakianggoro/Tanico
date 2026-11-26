@@ -16,6 +16,8 @@ fun calculateSellerAnalytics(
     }.filter { (_, month) -> month in firstMonth..currentMonth }
     val completed = datedOrders.filter { (order, _) -> order.status == "completed" }
     val completedByMonth = completed.groupBy({ it.second }, { it.first })
+    val currentMonthCompleted = completed.filter { (_, month) -> month == currentMonth }
+    val previousMonthCompleted = completed.filter { (_, month) -> month == currentMonth.minusMonths(1) }
     val monthlyRevenue = (0..5).map { offset ->
         val month = firstMonth.plusMonths(offset.toLong())
         MonthlyRevenue(
@@ -29,6 +31,10 @@ fun calculateSellerAnalytics(
         completedOrderCount = completed.size,
         pendingOrderCount = datedOrders.count { (order, _) -> order.status == "pending" },
         totalOrderCount = datedOrders.size,
+        currentMonthCompletedRevenue = currentMonthCompleted.sumOf { (order, _) -> order.subtotal.roundToLong() },
+        previousMonthCompletedRevenue = previousMonthCompleted.sumOf { (order, _) -> order.subtotal.roundToLong() },
+        currentMonthCompletedOrderCount = currentMonthCompleted.size,
+        currentMonthDivertedWasteKg = currentMonthCompleted.sumOf { (order, _) -> order.totalWeightKg },
         monthlyRevenue = monthlyRevenue
     )
 }
