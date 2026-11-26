@@ -34,6 +34,7 @@ fun TanicoMapPinPicker(
     latitude: String,
     longitude: String,
     onLocationSelected: (latitude: String, longitude: String) -> Unit,
+    locationLabel: String = "toko",
     modifier: Modifier = Modifier
 ) {
     val selectedLatitude = latitude.toDoubleOrNull()?.takeIf { it.isFinite() && it in -90.0..90.0 }
@@ -92,7 +93,7 @@ fun TanicoMapPinPicker(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Ketuk peta untuk menempatkan pin toko.",
+            text = "Ketuk peta untuk menempatkan pin $locationLabel.",
             style = MaterialTheme.typography.bodyMedium
         )
         MaplibreMap(

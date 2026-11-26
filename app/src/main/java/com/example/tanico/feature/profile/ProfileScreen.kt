@@ -50,6 +50,18 @@ fun ProfileScreen(
     message: String?,
     analyticsState: SellerAnalyticsUiState,
     onAnalyticsRetry: () -> Unit,
+    buyerAddressState: BuyerAddressUiState,
+    onBuyerAddressRetry: () -> Unit,
+    onBuyerAddressEdit: () -> Unit,
+    onBuyerAddressCancel: () -> Unit,
+    onBuyerAddressSave: () -> Unit,
+    onBuyerRecipientChanged: (String) -> Unit,
+    onBuyerPhoneChanged: (String) -> Unit,
+    onBuyerAddressLineChanged: (String) -> Unit,
+    onBuyerCityChanged: (String) -> Unit,
+    onBuyerPostalCodeChanged: (String) -> Unit,
+    onBuyerLatitudeChanged: (String) -> Unit,
+    onBuyerLongitudeChanged: (String) -> Unit,
     onFullNameChanged: (String) -> Unit,
     onPhoneNumberChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
@@ -159,29 +171,20 @@ fun ProfileScreen(
         }
 
         if (role == UserRole.Buyer) {
-            ProfileSectionCard(title = "Alamat Pengiriman") {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            "Belum ada alamat tersimpan",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            "Alamat pengiriman dapat dikelola di sini saat fitur alamat tersedia.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
+            BuyerAddressSection(
+                state = buyerAddressState,
+                onRetry = onBuyerAddressRetry,
+                onEdit = onBuyerAddressEdit,
+                onCancel = onBuyerAddressCancel,
+                onSave = onBuyerAddressSave,
+                onRecipientChanged = onBuyerRecipientChanged,
+                onPhoneChanged = onBuyerPhoneChanged,
+                onAddressLineChanged = onBuyerAddressLineChanged,
+                onCityChanged = onBuyerCityChanged,
+                onPostalCodeChanged = onBuyerPostalCodeChanged,
+                onLatitudeChanged = onBuyerLatitudeChanged,
+                onLongitudeChanged = onBuyerLongitudeChanged
+            )
         } else {
             ProfileSectionCard(title = "Informasi Toko") {
                 if (analyticsState.storeMissing && !isPreviewMode) {
@@ -294,6 +297,142 @@ fun ProfileScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         )
+    }
+}
+
+@Composable
+private fun BuyerAddressSection(
+    state: BuyerAddressUiState,
+    onRetry: () -> Unit,
+    onEdit: () -> Unit,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    onRecipientChanged: (String) -> Unit,
+    onPhoneChanged: (String) -> Unit,
+    onAddressLineChanged: (String) -> Unit,
+    onCityChanged: (String) -> Unit,
+    onPostalCodeChanged: (String) -> Unit,
+    onLatitudeChanged: (String) -> Unit,
+    onLongitudeChanged: (String) -> Unit
+) {
+    ProfileSectionCard(title = "Alamat Pengiriman") {
+        when {
+            state.isLoading -> Text(
+                "Memuat alamat pengiriman...",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            state.isEditing -> {
+                if (state.address == null) {
+                    Text(
+                        "Tambahkan alamat utama agar pesanan dapat dikirim ke lokasi yang benar.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TanicoTextField(
+                    value = state.recipientName,
+                    onValueChange = onRecipientChanged,
+                    label = "Nama penerima",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSaving
+                )
+                TanicoTextField(
+                    value = state.phone,
+                    onValueChange = onPhoneChanged,
+                    label = "Nomor telepon penerima",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSaving
+                )
+                TanicoTextField(
+                    value = state.addressLine,
+                    onValueChange = onAddressLineChanged,
+                    label = "Alamat lengkap",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSaving
+                )
+                TanicoTextField(
+                    value = state.city,
+                    onValueChange = onCityChanged,
+                    label = "Kota/Kabupaten",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSaving
+                )
+                TanicoTextField(
+                    value = state.postalCode,
+                    onValueChange = onPostalCodeChanged,
+                    label = "Kode pos (opsional)",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSaving
+                )
+                TanicoMapPinPicker(
+                    latitude = state.latitude,
+                    longitude = state.longitude,
+                    onLocationSelected = { latitude, longitude ->
+                        onLatitudeChanged(latitude)
+                        onLongitudeChanged(longitude)
+                    },
+                    locationLabel = "alamat pengiriman",
+                    modifier = Modifier.fillMaxWidth()
+                )
+                state.message?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                TanicoPrimaryButton(
+                    text = if (state.isSaving) "Menyimpan..." else "Simpan Alamat",
+                    onClick = onSave,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.isSaving
+                )
+                if (state.address != null) {
+                    TanicoSecondaryButton(
+                        text = "Batal",
+                        onClick = onCancel,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !state.isSaving
+                    )
+                }
+            }
+
+            state.address == null -> {
+                state.message?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                    TextButton(onClick = onRetry) { Text("Coba lagi") }
+                } ?: Text(
+                    "Belum ada alamat pengiriman tersimpan.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (state.message == null) {
+                    TextButton(onClick = onEdit) { Text("Tambah alamat") }
+                }
+            }
+
+            else -> {
+                Text(
+                    state.address.recipientName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                ProfileDetail(label = "Nomor telepon", value = state.address.phone)
+                ProfileDetail(label = "Alamat", value = state.address.address)
+                ProfileDetail(
+                    label = "Kota/Kabupaten",
+                    value = listOfNotNull(state.address.city, state.address.postalCode)
+                        .filter(String::isNotBlank)
+                        .joinToString(" ")
+                )
+                TextButton(onClick = onEdit) { Text("Ubah alamat") }
+                state.message?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
     }
 }
 

@@ -1,0 +1,79 @@
+package com.example.tanico.data.repository
+
+import com.example.tanico.data.remote.SupabaseClientProvider
+import com.example.tanico.domain.model.MarketplaceProduct
+import com.example.tanico.domain.repository.MarketplaceRepository
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+class SupabaseMarketplaceRepository(
+    private val clientProvider: SupabaseClientProvider
+) : MarketplaceRepository {
+    override suspend fun loadActiveProducts(): Result<List<MarketplaceProduct>> = try {
+        check(clientProvider.isConfigured) {
+            "Supabase belum dikonfigurasi. Isi URL dan publishable key di local.properties."
+        }
+        val client = clientProvider.client
+        val products = client.from("products")
+            .select(
+                columns = Columns.list(
+                    "id",
+                    "category_id",
+                    "name",
+                    "description",
+                    "price",
+                    "stock",
+                    "unit",
+                    "weight_per_unit_kg"
+                )
+            ) {
+                filter { eq("status", "active") }
+                limit(20)
+            }
+            .decodeList<ProductRow>()
+        val categories = client.from("categories")
+            .select(columns = Columns.list("id", "name"))
+            .decodeList<CategoryRow>()
+            .associate { it.id to it.name }
+
+        Result.success(
+            products.map { product ->
+                MarketplaceProduct(
+                    id = product.id,
+                    categoryName = categories[product.categoryId] ?: "Limbah pertanian",
+                    name = product.name,
+                    description = product.description,
+                    price = product.price,
+                    stock = product.stock,
+                    unit = product.unit,
+                    weightPerUnitKg = product.weightPerUnitKg
+                )
+            }
+        )
+    } catch (exception: CancellationException) {
+        throw exception
+    } catch (exception: Exception) {
+        Result.failure(exception)
+    }
+
+    @Serializable
+    private data class ProductRow(
+        val id: String,
+        @SerialName("category_id") val categoryId: String,
+        val name: String,
+        val description: String? = null,
+        val price: Double,
+        val stock: Int,
+        val unit: String,
+        @SerialName("weight_per_unit_kg") val weightPerUnitKg: Double
+    )
+
+    @Serializable
+    private data class CategoryRow(
+        val id: String,
+        val name: String
+    )
+}
