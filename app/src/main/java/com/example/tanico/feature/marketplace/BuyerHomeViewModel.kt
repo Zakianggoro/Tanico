@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.tanico.BuildConfig
 import com.example.tanico.core.AppContainer
 import com.example.tanico.domain.model.DeviceCoordinates
 import com.example.tanico.domain.model.MarketplaceProduct
@@ -27,6 +28,7 @@ data class BuyerHomeUiState(
     val products: List<MarketplaceProduct> = emptyList(),
     val message: String? = null,
     val coordinates: DeviceCoordinates? = null,
+    val isShowingAllProductsForDebug: Boolean = false,
     val locationMessage: String? = null,
     val isLocationPermissionDenied: Boolean = false,
     val canRetry: Boolean = true
@@ -44,6 +46,7 @@ class BuyerHomeViewModel(
             isLoading = true,
             isLocationLoading = true,
             message = null,
+            isShowingAllProductsForDebug = false,
             locationMessage = null,
             isLocationPermissionDenied = false
         )
@@ -75,9 +78,42 @@ class BuyerHomeViewModel(
     }
 
     fun retry(): Boolean {
+        if (mutableUiState.value.isShowingAllProductsForDebug) {
+            loadAllActiveProductsForDebug()
+            return true
+        }
         val coordinates = cachedCoordinates ?: return false
         loadNearbyProducts(coordinates)
         return true
+    }
+
+    fun loadAllActiveProductsForDebug() {
+        check(BuildConfig.DEBUG) { "Unfiltered product loading is available only in debug builds." }
+        if (mutableUiState.value.isLoading) return
+
+        mutableUiState.value = mutableUiState.value.copy(
+            isLoading = true,
+            message = null,
+            isShowingAllProductsForDebug = true
+        )
+        viewModelScope.launch {
+            repository.loadAllActiveProductsForDebug()
+                .onSuccess { products ->
+                    mutableUiState.value = mutableUiState.value.copy(
+                        isLoading = false,
+                        products = products,
+                        message = null,
+                        isShowingAllProductsForDebug = true
+                    )
+                }
+                .onFailure { exception ->
+                    mutableUiState.value = mutableUiState.value.copy(
+                        isLoading = false,
+                        message = exception.message?.takeIf(String::isNotBlank)
+                            ?: "Produk belum dapat dimuat. Coba lagi."
+                    )
+                }
+        }
     }
 
     private fun loadNearbyProducts(

@@ -16,6 +16,52 @@ import kotlinx.serialization.json.put
 class SupabaseMarketplaceRepository(
     private val clientProvider: SupabaseClientProvider
 ) : MarketplaceRepository {
+    override suspend fun loadAllActiveProductsForDebug(): Result<List<MarketplaceProduct>> = try {
+        check(clientProvider.isConfigured) {
+            "Supabase belum dikonfigurasi. Isi URL dan publishable key di local.properties."
+        }
+        val client = clientProvider.client
+        val products = client.from("products")
+            .select(
+                columns = Columns.list(
+                    "id",
+                    "category_id",
+                    "name",
+                    "description",
+                    "price",
+                    "stock",
+                    "unit",
+                    "weight_per_unit_kg"
+                )
+            ) {
+                filter { eq("status", "active") }
+            }
+            .decodeList<ProductRow>()
+        val categories = client.from("categories")
+            .select(columns = Columns.list("id", "name"))
+            .decodeList<CategoryRow>()
+            .associate { it.id to it.name }
+
+        Result.success(
+            products.map { product ->
+                MarketplaceProduct(
+                    id = product.id,
+                    categoryName = categories[product.categoryId] ?: "Limbah pertanian",
+                    name = product.name,
+                    description = product.description,
+                    price = product.price,
+                    stock = product.stock,
+                    unit = product.unit,
+                    weightPerUnitKg = product.weightPerUnitKg
+                )
+            }
+        )
+    } catch (exception: CancellationException) {
+        throw exception
+    } catch (exception: Exception) {
+        Result.failure(exception)
+    }
+
     override suspend fun loadNearbyActiveProducts(
         latitude: Double,
         longitude: Double,
@@ -70,7 +116,7 @@ class SupabaseMarketplaceRepository(
         val stock: Int,
         val unit: String,
         @SerialName("weight_per_unit_kg") val weightPerUnitKg: Double,
-        @SerialName("distance_km") val distanceKm: Double
+        @SerialName("distance_km") val distanceKm: Double? = null
     )
 
     @Serializable

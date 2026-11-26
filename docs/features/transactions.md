@@ -28,8 +28,15 @@
 - Stock is deducted when order creation succeeds.
 - Order creation and stock deduction must be atomic.
 - Order item price/name/unit/weight are snapshots.
-- Payment method is undecided. Do not show a fabricated payment success state.
+- Initial payment choice: cash on delivery (COD) only. Bank transfer and digital wallets are deferred.
+- Do not show a fabricated payment success state. COD does not make client-side order creation safe.
 - Order status changes must follow the approved transition rules.
+
+## Current buyer UI scope
+
+- The initial cart is session-only and is not synchronized to Supabase.
+- Checkout review may display COD, but order submission remains disabled until a documented trusted database function can revalidate price and stock and create the order atomically.
+- Shipping cost remains unavailable until the provider and tariff formula are approved. Do not present an estimated or payable total before then.
 
 ## Buyer screens
 

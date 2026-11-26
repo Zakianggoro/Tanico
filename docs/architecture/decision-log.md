@@ -10,7 +10,7 @@
 | ADR-006 | One order belongs to one store | Agreed | Checkout one store at a time |
 | ADR-007 | Deduct stock at successful order creation | Agreed | Must be atomic |
 | ADR-008 | Shipping based on distance and weight | Agreed | Provider and tariff formula open |
-| ADR-009 | Payment method | Open | Do not assume |
+| ADR-009 | Payment method | Agreed for initial buyer flow | Cash on delivery (COD) only; bank transfer and digital wallets are deferred. Live order submission still requires an approved server-side checkout transaction. |
 | ADR-010 | Routing/distance provider | Open | Must be selected |
 | ADR-011 | Shipping tariff formula | Open | Must be selected |
 | ADR-012 | Cancellation policy after seller acceptance | Open | Define stock restoration conditions |

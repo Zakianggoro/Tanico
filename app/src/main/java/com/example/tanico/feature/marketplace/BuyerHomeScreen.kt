@@ -3,26 +3,39 @@ package com.example.tanico.feature.marketplace
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.tanico.BuildConfig
 import com.example.tanico.domain.model.DeviceCoordinates
 import com.example.tanico.domain.model.MarketplaceProduct
 import java.text.NumberFormat
@@ -37,27 +50,66 @@ fun BuyerHomeScreen(
     onRetry: () -> Unit,
     onBrowseStores: () -> Unit,
     onCalibrateLocation: () -> Unit,
+    onShowAllProductsForDebug: () -> Unit,
     onOpenLocationSettings: () -> Unit,
+    cartItemCount: Int,
+    onOpenCart: () -> Unit,
+    onOpenProduct: (MarketplaceProduct) -> Unit,
+    onAddToCart: (MarketplaceProduct) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedCategory by rememberSaveable { mutableStateOf("Semua") }
+    val categories = listOf("Semua") + state.products
+        .map(MarketplaceProduct::categoryName)
+        .distinct()
+    val activeCategory = selectedCategory.takeIf(categories::contains) ?: "Semua"
+    val normalizedQuery = searchQuery.trim().lowercase(Locale.getDefault())
+    val filteredProducts = state.products.filter { product ->
+        (activeCategory == "Semua" || product.categoryName == activeCategory) &&
+            (normalizedQuery.isBlank() ||
+                product.name.lowercase(Locale.getDefault()).contains(normalizedQuery) ||
+                product.categoryName.lowercase(Locale.getDefault()).contains(normalizedQuery))
+    }
+
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                "TANICO  •  Beranda",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "Halo, ${fullName.ifBlank { "Mitra TANICO" }}",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "TANICO  •  Beranda",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    "Halo, ${fullName.ifBlank { "Mitra TANICO" }}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            OutlinedButton(onClick = onOpenCart) {
+                Text("Keranjang $cartItemCount")
+            }
         }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Cari produk atau kategori") },
+            shape = RoundedCornerShape(16.dp)
+        )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -103,11 +155,15 @@ fun BuyerHomeScreen(
                         Text(
                             when {
                                 state.isLocationLoading -> "Mengambil lokasi satu kali..."
+                                state.isShowingAllProductsForDebug ->
+                                    "Mode debug: menampilkan semua produk aktif tanpa filter jarak."
                                 state.locationMessage != null -> state.locationMessage
                                 else -> "Diambil saat aplikasi dibuka atau dikalibrasi, tanpa pelacakan aktif."
                             },
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (state.locationMessage != null) {
+                            color = if (state.locationMessage != null &&
+                                !state.isShowingAllProductsForDebug
+                            ) {
                                 MaterialTheme.colorScheme.error
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
@@ -136,6 +192,20 @@ fun BuyerHomeScreen(
                         }
                     }
                 }
+                if (
+                    BuildConfig.DEBUG &&
+                    state.coordinates == null &&
+                    state.locationMessage != null &&
+                    !state.isShowingAllProductsForDebug
+                ) {
+                    TextButton(
+                        onClick = onShowAllProductsForDebug,
+                        enabled = !state.isLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Debug: tampilkan semua produk aktif")
+                    }
+                }
             }
         }
 
@@ -155,7 +225,11 @@ fun BuyerHomeScreen(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Temukan produk aktif dari penjual dalam radius 25 km dari lokasi Anda.",
+                    if (state.isShowingAllProductsForDebug) {
+                        "Mode debug aktif: produk ditampilkan tanpa filter jarak."
+                    } else {
+                        "Temukan produk aktif dari penjual dalam radius 25 km dari lokasi Anda."
+                    },
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -166,6 +240,28 @@ fun BuyerHomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Jelajahi toko  →")
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "Kategori limbah",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categories.forEach { category ->
+                    FilterChip(
+                        selected = activeCategory == category,
+                        onClick = { selectedCategory = category },
+                        label = { Text(category) }
+                    )
+                }
+            }
         }
 
         Row(
@@ -179,7 +275,7 @@ fun BuyerHomeScreen(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                "${state.products.size} produk",
+                "${filteredProducts.size} produk",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -215,7 +311,9 @@ fun BuyerHomeScreen(
                 }
             }
 
-            state.coordinates == null && state.locationMessage != null -> Unit
+            state.coordinates == null &&
+                state.locationMessage != null &&
+                !state.isShowingAllProductsForDebug -> Unit
 
             state.products.isEmpty() -> Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -228,89 +326,143 @@ fun BuyerHomeScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        "Belum ada produk terdekat",
+                        if (state.isShowingAllProductsForDebug) {
+                            "Belum ada produk aktif"
+                        } else {
+                            "Belum ada produk terdekat"
+                        },
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        "Belum ada produk aktif dalam jarak 25 km dari lokasi Anda.",
+                        if (state.isShowingAllProductsForDebug) {
+                            "Belum ada produk aktif yang dipublikasikan."
+                        } else {
+                            "Belum ada produk aktif dalam jarak 25 km dari lokasi Anda."
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            else -> state.products.forEach { product ->
-                BuyerProductCard(product)
+            filteredProducts.isEmpty() -> Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = MaterialTheme.shapes.large
+            ) {
+                Text(
+                    "Produk tidak ditemukan. Coba kata kunci atau kategori lain.",
+                    modifier = Modifier.padding(18.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            else -> filteredProducts.chunked(2).forEach { productsInRow ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    productsInRow.forEach { product ->
+                        BuyerProductCard(
+                            product = product,
+                            onOpenProduct = { onOpenProduct(product) },
+                            onAddToCart = { onAddToCart(product) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (productsInRow.size == 1) {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun BuyerProductCard(product: MarketplaceProduct) {
+private fun BuyerProductCard(
+    product: MarketplaceProduct,
+    onOpenProduct: () -> Unit,
+    onAddToCart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = MaterialTheme.shapes.large
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Surface(
-                modifier = Modifier.size(82.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(112.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("🌾", style = MaterialTheme.typography.headlineMedium)
+                    Text("🌾", style = MaterialTheme.typography.displaySmall)
                 }
             }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            Text(
+                product.categoryName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                product.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "${formatProductPrice(product.price)} / ${product.unit}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                "Stok ${product.stock} ${product.unit}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            product.distanceKm?.let { distanceKm ->
+                Text(
+                    formatDistance(distanceKm),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    product.categoryName,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    product.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                product.description?.takeIf(String::isNotBlank)?.let { description ->
-                    Text(
-                        description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                OutlinedButton(
+                    onClick = onOpenProduct,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                ) {
+                    Text("Detail")
                 }
-                Text(
-                    "${formatProductPrice(product.price)}/${product.unit}  •  Stok ${product.stock} ${product.unit}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                product.distanceKm?.let { distanceKm ->
-                    Text(
-                        "Sekitar ${formatDistance(distanceKm)} dari lokasi Anda",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Button(
+                    onClick = onAddToCart,
+                    enabled = product.stock > 0,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                ) {
+                    Text("Tambah")
                 }
             }
         }
     }
 }
 
-private fun formatProductPrice(price: Double): String = NumberFormat
+internal fun formatProductPrice(price: Double): String = NumberFormat
     .getCurrencyInstance(Locale.forLanguageTag("id-ID"))
     .apply {
         currency = Currency.getInstance("IDR")
@@ -327,7 +479,7 @@ private fun formatCoordinates(coordinates: DeviceCoordinates): String =
         coordinates.longitude
     )
 
-private fun formatDistance(distanceKm: Double): String = NumberFormat
+internal fun formatDistance(distanceKm: Double): String = NumberFormat
     .getNumberInstance(Locale.forLanguageTag("id-ID"))
     .apply {
         maximumFractionDigits = 1

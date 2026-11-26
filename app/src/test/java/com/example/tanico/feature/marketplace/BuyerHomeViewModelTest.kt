@@ -84,12 +84,33 @@ class BuyerHomeViewModelTest {
         assertEquals(2, repository.requestCount)
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun debugFallbackLoadsAllProductsWithoutLocation() = runTest {
+        val repository = FakeMarketplaceRepository(emptyList())
+        val viewModel = BuyerHomeViewModel(repository)
+
+        viewModel.locationUnavailable("Lokasi emulator tidak tersedia.")
+        viewModel.loadAllActiveProductsForDebug()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isShowingAllProductsForDebug)
+        assertEquals(1, repository.allProductsRequestCount)
+        assertEquals(null, viewModel.uiState.value.coordinates)
+    }
+
     private class FakeMarketplaceRepository(
         private val products: List<MarketplaceProduct>
     ) : MarketplaceRepository {
         var requestedCoordinates: DeviceCoordinates? = null
         var requestedRadiusKm: Double? = null
         var requestCount: Int = 0
+        var allProductsRequestCount: Int = 0
+
+        override suspend fun loadAllActiveProductsForDebug(): Result<List<MarketplaceProduct>> {
+            allProductsRequestCount += 1
+            return Result.success(products)
+        }
 
         override suspend fun loadNearbyActiveProducts(
             latitude: Double,

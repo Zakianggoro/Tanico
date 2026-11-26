@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,14 +23,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.tanico.core.ui.TanicoEmptyState
+import com.example.tanico.domain.model.MarketplaceProduct
 import com.example.tanico.domain.model.UserRole
+import com.example.tanico.feature.marketplace.BuyerCartScreen
+import com.example.tanico.feature.marketplace.BuyerCartUiState
+import com.example.tanico.feature.marketplace.BuyerCheckoutReviewScreen
 import com.example.tanico.feature.marketplace.BuyerHomeScreen
 import com.example.tanico.feature.marketplace.BuyerHomeUiState
+import com.example.tanico.feature.marketplace.BuyerProductDetailScreen
 import com.example.tanico.feature.marketplace.BuyerStoreDirectoryScreen
 import com.example.tanico.feature.marketplace.BuyerStorefrontScreen
 import com.example.tanico.feature.profile.BuyerAddressUiState
 import com.example.tanico.feature.profile.ProfileScreen
 import com.example.tanico.feature.seller.SellerAnalyticsUiState
+import com.example.tanico.feature.education.ui.EducationFeatureScreen
 
 enum class MainSection(val label: String, val marker: String) {
     Beranda("Beranda", "⌂"),
@@ -41,7 +48,10 @@ enum class MainSection(val label: String, val marker: String) {
 private enum class BuyerStorePage {
     Home,
     Directory,
-    Storefront
+    Storefront,
+    ProductDetail,
+    Cart,
+    Checkout
 }
 
 @Composable
@@ -61,6 +71,27 @@ fun MainAppScreen(
     message: String?,
     analyticsState: SellerAnalyticsUiState,
     onAnalyticsRetry: () -> Unit,
+    buyerHomeState: BuyerHomeUiState,
+    onBuyerHomeRetry: () -> Unit,
+    onBuyerHomeCalibrateLocation: () -> Unit,
+    onBuyerHomeShowAllProductsForDebug: () -> Unit,
+    onBuyerHomeOpenLocationSettings: () -> Unit,
+    buyerCartState: BuyerCartUiState,
+    onBuyerCartAdd: (MarketplaceProduct, Int) -> Unit,
+    onBuyerCartSetQuantity: (String, Int) -> Unit,
+    onBuyerCartRemoveProduct: (String) -> Unit,
+    buyerAddressState: BuyerAddressUiState,
+    onBuyerAddressRetry: () -> Unit,
+    onBuyerAddressEdit: () -> Unit,
+    onBuyerAddressCancel: () -> Unit,
+    onBuyerAddressSave: () -> Unit,
+    onBuyerRecipientChanged: (String) -> Unit,
+    onBuyerPhoneChanged: (String) -> Unit,
+    onBuyerAddressLineChanged: (String) -> Unit,
+    onBuyerCityChanged: (String) -> Unit,
+    onBuyerPostalCodeChanged: (String) -> Unit,
+    onBuyerLatitudeChanged: (String) -> Unit,
+    onBuyerLongitudeChanged: (String) -> Unit,
     onFullNameChanged: (String) -> Unit,
     onPhoneNumberChanged: (String) -> Unit,
     onEmailChanged: (String) -> Unit,
@@ -88,6 +119,9 @@ fun MainAppScreen(
     var buyerStorePage by rememberSaveable(role) {
         mutableStateOf(BuyerStorePage.Home)
     }
+    var selectedProductId by rememberSaveable(role) {
+        mutableStateOf<String?>(null)
+    }
     val section = MainSection.values().firstOrNull { it.name == selectedSection }
         ?: MainSection.Beranda
     BackHandler(
@@ -98,6 +132,9 @@ fun MainAppScreen(
         buyerStorePage = when (buyerStorePage) {
             BuyerStorePage.Storefront -> BuyerStorePage.Directory
             BuyerStorePage.Directory -> BuyerStorePage.Home
+            BuyerStorePage.ProductDetail -> BuyerStorePage.Home
+            BuyerStorePage.Checkout -> BuyerStorePage.Cart
+            BuyerStorePage.Cart -> BuyerStorePage.Home
             BuyerStorePage.Home -> BuyerStorePage.Home
         }
     }
@@ -113,6 +150,7 @@ fun MainAppScreen(
                         onClick = {
                             selectedSection = item.name
                             buyerStorePage = BuyerStorePage.Home
+                            selectedProductId = null
                         },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.primary,
@@ -145,6 +183,18 @@ fun MainAppScreen(
                 message = message,
                 analyticsState = analyticsState,
                 onAnalyticsRetry = onAnalyticsRetry,
+                buyerAddressState = buyerAddressState,
+                onBuyerAddressRetry = onBuyerAddressRetry,
+                onBuyerAddressEdit = onBuyerAddressEdit,
+                onBuyerAddressCancel = onBuyerAddressCancel,
+                onBuyerAddressSave = onBuyerAddressSave,
+                onBuyerRecipientChanged = onBuyerRecipientChanged,
+                onBuyerPhoneChanged = onBuyerPhoneChanged,
+                onBuyerAddressLineChanged = onBuyerAddressLineChanged,
+                onBuyerCityChanged = onBuyerCityChanged,
+                onBuyerPostalCodeChanged = onBuyerPostalCodeChanged,
+                onBuyerLatitudeChanged = onBuyerLatitudeChanged,
+                onBuyerLongitudeChanged = onBuyerLongitudeChanged,
                 onFullNameChanged = onFullNameChanged,
                 onPhoneNumberChanged = onPhoneNumberChanged,
                 onEmailChanged = onEmailChanged,
@@ -171,7 +221,15 @@ fun MainAppScreen(
                         onRetry = onBuyerHomeRetry,
                         onBrowseStores = { buyerStorePage = BuyerStorePage.Directory },
                         onCalibrateLocation = onBuyerHomeCalibrateLocation,
+                        onShowAllProductsForDebug = onBuyerHomeShowAllProductsForDebug,
                         onOpenLocationSettings = onBuyerHomeOpenLocationSettings,
+                        cartItemCount = buyerCartState.productCount,
+                        onOpenCart = { buyerStorePage = BuyerStorePage.Cart },
+                        onOpenProduct = { product ->
+                            selectedProductId = product.id
+                            buyerStorePage = BuyerStorePage.ProductDetail
+                        },
+                        onAddToCart = { product -> onBuyerCartAdd(product, 1) },
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
@@ -191,6 +249,56 @@ fun MainAppScreen(
                             .fillMaxSize()
                             .padding(innerPadding)
                     )
+
+                    BuyerStorePage.ProductDetail -> {
+                        val product = buyerHomeState.products
+                            .firstOrNull { it.id == selectedProductId }
+                        if (product != null) {
+                            BuyerProductDetailScreen(
+                                product = product,
+                                cartItemCount = buyerCartState.productCount,
+                                onBack = { buyerStorePage = BuyerStorePage.Home },
+                                onAddToCart = onBuyerCartAdd,
+                                onOpenCart = { buyerStorePage = BuyerStorePage.Cart },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                            )
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                            ) {
+                                TextButton(onClick = { buyerStorePage = BuyerStorePage.Home }) {
+                                    Text("← Kembali ke Beranda")
+                                }
+                                TanicoEmptyState(
+                                    title = "Produk tidak tersedia",
+                                    message = "Katalog produk berubah atau produk ini tidak lagi tersedia."
+                                )
+                            }
+                        }
+                    }
+
+                    BuyerStorePage.Cart -> BuyerCartScreen(
+                        state = buyerCartState,
+                        onBack = { buyerStorePage = BuyerStorePage.Home },
+                        onSetQuantity = onBuyerCartSetQuantity,
+                        onRemoveProduct = onBuyerCartRemoveProduct,
+                        onContinueToCheckout = { buyerStorePage = BuyerStorePage.Checkout },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
+
+                    BuyerStorePage.Checkout -> BuyerCheckoutReviewScreen(
+                        state = buyerCartState,
+                        onBack = { buyerStorePage = BuyerStorePage.Cart },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    )
                 }
             } else {
                 HomeScreen(
@@ -202,14 +310,6 @@ fun MainAppScreen(
                         .padding(innerPadding)
                 )
             }
-            MainSection.Beranda -> HomeScreen(
-                role = role,
-                fullName = fullName,
-                isPreviewMode = isPreviewMode,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            )
 
             MainSection.Notifikasi -> TanicoEmptyState(
                 title = "Belum ada notifikasi",
@@ -219,9 +319,7 @@ fun MainAppScreen(
                     .padding(innerPadding)
             )
 
-            MainSection.Pembelajaran -> TanicoEmptyState(
-                title = "Pembelajaran TANICO",
-                message = "Artikel dan materi edukasi akan tersedia pada tahap pengembangan berikutnya.",
+            MainSection.Pembelajaran -> EducationFeatureScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
